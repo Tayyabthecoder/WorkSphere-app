@@ -1,0 +1,47 @@
+{
+  "common": {
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "sprints": "Sprints",
+    "tasks": "Tasks",
+    "calendar": "Calendar",
+    "gantt": "Gantt",
+    "capacity": "Capacity",
+    "clients": "Clients",
+    "timesheet": "Timesheet",
+    "budget": "Budget",
+    "reports": "Reports",
+    "documents": "Documents",
+    "team": "Team",
+    "settings": "Settings",
+    "admin": "Admin",
+    "save": "Save Changes",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search...",
+    "filter": "Filter",
+    "loading": "Loading...",
+    "noResults": "No results found",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "auth": {
+    "login": "Sign In",
+    "register": "Sign Up",
+    "logout": "Log Out",
+    "email": "Email Address",
+    "password": "Password",
+    "rememberMe": "Remember Me"
+  },
+  "admin": {
+    "title": "Platform Administration",
+    "retention": "Retention Policy",
+    "security": "Security Policy",
+    "fleet": "Fleet Overview",
+    "audit": "Audit Log",
+    "health": "Platform Health",
+    "templates": "Email Templates"
+  }
+}

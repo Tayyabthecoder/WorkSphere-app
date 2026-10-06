@@ -1,0 +1,176 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Default / Forest Accent */
+  --brand-primary: #003629;
+  --brand-emerald: #1b4d3e;
+  --brand-evergreen: #0d2218;
+  --brand-mint: #34d399;
+  --brand-glow: rgba(27, 77, 62, 0.35);
+
+  --primary: #003629;
+  --primary-container: #1b4d3e;
+  --on-primary: #ffffff;
+  --on-primary-container: #8abda9;
+  --evergreen: #0d2218;
+  --mint: #34d399;
+  --surface: #ffffff;
+  --surface-canvas: #f4f5f4;
+  --surface-card: #ffffff;
+  --on-surface: #0f172a;
+  --on-surface-variant: #475569;
+  --outline: #64748b;
+  --outline-variant: #cbd5e1;
+  --border-subtle: #e2e8f080;
+}
+
+/* Ocean Theme Accent */
+[data-accent="ocean"] {
+  --brand-primary: #0f2c59;
+  --brand-emerald: #1f4fa8;
+  --brand-evergreen: #0a192f;
+  --brand-mint: #60a5fa;
+  --brand-glow: rgba(31, 79, 168, 0.35);
+
+  --primary: #0f2c59;
+  --primary-container: #1f4fa8;
+  --evergreen: #0a192f;
+  --mint: #60a5fa;
+}
+
+/* Plum Theme Accent */
+[data-accent="plum"] {
+  --brand-primary: #3b185f;
+  --brand-emerald: #6a3fb0;
+  --brand-evergreen: #1f0b38;
+  --brand-mint: #c084fc;
+  --brand-glow: rgba(106, 63, 176, 0.35);
+
+  --primary: #3b185f;
+  --primary-container: #6a3fb0;
+  --evergreen: #1f0b38;
+  --mint: #c084fc;
+}
+
+/* Ember Theme Accent */
+[data-accent="ember"] {
+  --brand-primary: #632612;
+  --brand-emerald: #b1491d;
+  --brand-evergreen: #2e0f05;
+  --brand-mint: #fb923c;
+  --brand-glow: rgba(177, 73, 29, 0.35);
+
+  --primary: #632612;
+  --primary-container: #b1491d;
+  --evergreen: #2e0f05;
+  --mint: #fb923c;
+}
+
+body {
+  background-color: var(--surface-canvas);
+  color: var(--on-surface);
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.015em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.6);
+}
+
+/* Modern Precision Craft Component Utilities */
+@layer components {
+  /* Precision Surface Card with Fernly subtle tactile lift */
+  .ws-card {
+    @apply bg-surface-card rounded-xl border border-border/80 shadow-card transition-all duration-150;
+  }
+
+  .ws-card:hover {
+    @apply shadow-card-hover border-border;
+  }
+
+  /* Tactile Card Lift Physics */
+  .card-lift {
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px -4px rgba(13, 34, 24, 0.1), 0 4px 6px -2px rgba(13, 34, 24, 0.04);
+  }
+
+  /* Deep Evergreen Tactical Card */
+  .ws-card-dark {
+    @apply bg-brand-evergreen text-white rounded-xl border border-emerald-950/60 shadow-glow-dark relative overflow-hidden;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 8px 24px -6px var(--brand-glow, rgba(13, 34, 24, 0.35));
+  }
+
+  /* Emerald Glass Container */
+  .ws-card-emerald {
+    @apply bg-brand-emerald text-white rounded-xl border border-emerald-800/50 shadow-glow-emerald relative overflow-hidden;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 8px 24px -6px var(--brand-glow, rgba(27, 77, 62, 0.35));
+  }
+
+  /* Frosted Glass Surface */
+  .ws-card-glass {
+    @apply bg-white/80 backdrop-blur-md rounded-xl border border-white/60 shadow-card;
+  }
+
+  /* Modern Rectangular Button Primary */
+  .ws-btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg bg-brand-emerald hover:bg-brand-primary text-white font-medium px-4 py-2 text-xs tracking-tight shadow-sm hover:shadow active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  /* Modern Rectangular Button Secondary */
+  .ws-btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg bg-surface-card border border-border hover:bg-surface-low text-text-primary font-medium px-4 py-2 text-xs tracking-tight shadow-subtle hover:border-text-muted/40 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  /* Modern Form Input */
+  .ws-input {
+    @apply w-full rounded-lg bg-surface-card border border-border px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-emerald focus:ring-2 focus:ring-brand-emerald/15 transition-all shadow-subtle;
+  }
+
+  /* Modern Status Badge Chip */
+  .ws-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold tracking-tight border border-border/70 bg-surface-low text-text-secondary;
+  }
+
+  /* Backward Compatibility Mappings for Legacy Bento Classes */
+  .bento-card {
+    @apply bg-surface-card rounded-xl border border-border/80 shadow-card transition-all duration-150;
+  }
+
+  .bento-card:hover {
+    @apply shadow-card-hover -translate-y-0.5;
+  }
+
+  .bento-card-dark {
+    @apply bg-brand-evergreen text-white rounded-xl shadow-glow-dark border border-emerald-950/60 relative overflow-hidden;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 8px 24px -6px var(--brand-glow, rgba(13, 34, 24, 0.35));
+  }
+
+  .bento-card-primary {
+    @apply bg-brand-emerald text-white rounded-xl shadow-glow-emerald border border-emerald-800/50 relative overflow-hidden;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 8px 24px -6px var(--brand-glow, rgba(27, 77, 62, 0.35));
+  }
+}

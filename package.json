@@ -1,0 +1,19 @@
+{
+  "name": "worksphere",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WorkSphere Enterprise Work & Project Management Platform (MERN)",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm --workspace=backend run dev",
+    "dev:frontend": "npm --workspace=frontend run dev",
+    "build:backend": "npm --workspace=backend run build",
+    "build:frontend": "npm --workspace=frontend run build",
+    "build": "npm --workspace=backend run build && npm --workspace=frontend run build",
+    "lint": "npm --workspace=frontend run lint",
+    "seed": "npm --workspace=backend run seed"
+  }
+}

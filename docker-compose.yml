@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: worksphere-mern-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: worksphere
+    volumes:
+      - mern_mongo_data:/data/db
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: worksphere-mern-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: worksphere-mern-backend
+    ports:
+      - "5001:5001"
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/worksphere
+      REDIS_URL: redis://redis:6379
+      PORT: 5001
+      JWT_SECRET: worksphere_super_secret_jwt_key_production_2026
+      JWT_REFRESH_SECRET: worksphere_super_secret_jwt_refresh_key_2026
+      CORS_ORIGIN: http://localhost:5173
+    depends_on:
+      - mongodb
+      - redis
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: worksphere-mern-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mern_mongo_data:

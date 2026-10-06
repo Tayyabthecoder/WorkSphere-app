@@ -1,0 +1,47 @@
+{
+  "common": {
+    "dashboard": "Panel de Control",
+    "projects": "Proyectos",
+    "sprints": "Sprints",
+    "tasks": "Tareas",
+    "calendar": "Calendario",
+    "gantt": "Gantt",
+    "capacity": "Capacidad",
+    "clients": "Clientes",
+    "timesheet": "Parte de Horas",
+    "budget": "Presupuesto",
+    "reports": "Informes",
+    "documents": "Documentos",
+    "team": "Equipo",
+    "settings": "Configuración",
+    "admin": "Administración",
+    "save": "Guardar Cambios",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "search": "Buscar...",
+    "filter": "Filtrar",
+    "loading": "Cargando...",
+    "noResults": "No se encontraron resultados",
+    "status": "Estado",
+    "actions": "Acciones"
+  },
+  "auth": {
+    "login": "Iniciar Sesión",
+    "register": "Registrarse",
+    "logout": "Cerrar Sesión",
+    "email": "Correo Electrónico",
+    "password": "Contraseña",
+    "rememberMe": "Recordarme"
+  },
+  "admin": {
+    "title": "Administración de Plataforma",
+    "retention": "Política de Retención",
+    "security": "Política de Seguridad",
+    "fleet": "Visión General",
+    "audit": "Registro de Auditoría",
+    "health": "Estado de la Plataforma",
+    "templates": "Plantillas de Correo"
+  }
+}

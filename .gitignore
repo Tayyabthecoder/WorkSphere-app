@@ -1,0 +1,75 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Production build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Environment & Local Configuration
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+!.env.example
+*.local
+
+# Uploads & User-generated storage
+uploads/*
+!uploads/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+
+# Cache directories
+.cache/
+.eslintcache
+.stylelintcache
+
+# AI agent artifacts & local instructions
+.agent/
+
+# Project specifications & documentation
+PRD.md
+SRS.md
+Architecture_Document.md
+workflows.md
+UIUX_Document.md
+ui_comparison_table.md
+DESIGN.md
+Future enhancements.md
+Development_Document.md
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary files
+*.tmp
+*.temp
+*~
