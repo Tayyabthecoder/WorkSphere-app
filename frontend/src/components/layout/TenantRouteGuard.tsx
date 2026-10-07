@@ -19,8 +19,9 @@ export const TenantRouteGuard: React.FC<TenantRouteGuardProps> = ({
     return <Navigate to="/login" replace />;
   }
 
-  // Tenant resolution: ensure user belongs to an active tenant workspace
-  const hasTenant = Boolean(user?.tenantId && !user.tenantId.startsWith('pending'));
+  // Super Admin operates at the platform level and does not require an active tenant
+  const isSuperAdmin = user?.role === 'superAdmin';
+  const hasTenant = isSuperAdmin || Boolean(user?.tenantId && !user.tenantId.startsWith('pending'));
 
   if (!hasTenant) {
     if (fallback) return <>{fallback}</>;

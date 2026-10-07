@@ -36,10 +36,10 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  tenantName = 'NovaTech Labs',
-  tenantSlug = 'novatech',
-  userName = 'Alex Chen',
-  userRole = 'orgAdmin',
+  tenantName = 'Platform',
+  tenantSlug = 'platform',
+  userName = 'User',
+  userRole = 'superAdmin',
   userAvatar,
   onClose,
   className = '',

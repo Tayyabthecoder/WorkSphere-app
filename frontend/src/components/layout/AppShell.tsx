@@ -166,8 +166,8 @@ export const AppShell: React.FC<AppShellProps> = ({
         {/* Desktop Sidebar Rail */}
         <div className="hidden md:flex shrink-0">
           <Sidebar
-            tenantName={user?.tenantId?.replace('tnt_', '').toUpperCase() || 'NOVATECH'}
-            tenantSlug={user?.tenantId?.replace('tnt_', '') || 'novatech'}
+            tenantName={user?.tenantId ? user.tenantId.replace('tnt_', '').toUpperCase() : 'PLATFORM'}
+            tenantSlug={user?.tenantId ? user.tenantId.replace('tnt_', '') : 'platform'}
             userName={user?.name || 'Workspace User'}
             userRole={user?.role || 'member'}
             userAvatar={user?.avatarUrl}
@@ -183,8 +183,8 @@ export const AppShell: React.FC<AppShellProps> = ({
             />
             <div className="relative flex-1 flex flex-col max-w-xs w-full bg-surface-card shadow-2xl z-10">
               <Sidebar
-                tenantName={user?.tenantId?.replace('tnt_', '').toUpperCase() || 'NOVATECH'}
-                tenantSlug={user?.tenantId?.replace('tnt_', '') || 'novatech'}
+                tenantName={user?.tenantId ? user.tenantId.replace('tnt_', '').toUpperCase() : 'PLATFORM'}
+                tenantSlug={user?.tenantId ? user.tenantId.replace('tnt_', '') : 'platform'}
                 userName={user?.name || 'Workspace User'}
                 userRole={user?.role || 'member'}
                 userAvatar={user?.avatarUrl}
