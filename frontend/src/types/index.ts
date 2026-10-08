@@ -98,6 +98,21 @@ export interface TeamMember {
   createdAt?: string;
 }
 
+export interface Invitation {
+  invitationId: string;
+  tenantId: string;
+  email: string;
+  name: string;
+  role: 'superAdmin' | 'orgAdmin' | 'manager' | 'member' | 'viewer';
+  department?: string;
+  invitedByUserId: string;
+  status: 'pending' | 'accepted' | 'expired' | 'revoked';
+  expiresAt: string;
+  acceptedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ClientPortalSettings {
   allowOverview: boolean;
   allowTimeline: boolean;

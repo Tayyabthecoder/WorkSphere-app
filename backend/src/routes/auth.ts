@@ -6,10 +6,11 @@ import { z } from 'zod';
 import { UserModel, UserRole } from '../models/User.js';
 import { TenantModel } from '../models/Tenant.js';
 import { ProjectModel } from '../models/Project.js';
+import { InvitationModel } from '../models/Invitation.js';
 import { generateId } from '../utils/id.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
 import { verifyAuth } from '../middleware/auth.js';
-import { ValidationError, ConflictError, UnauthorizedError } from '../utils/errors.js';
+import { ValidationError, ConflictError, UnauthorizedError, NotFoundError } from '../utils/errors.js';
 import { getCurrencyForCountry } from '../utils/currency.js';
 import { ENV } from '../config/env.js';
 
@@ -554,6 +555,146 @@ router.get('/me', verifyAuth, async (req: Request, res: Response) => {
         settings: tenant.settings,
       } : null,
     });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// 6. GET /api/auth/invite-details
+router.get('/invite-details', async (req: Request, res: Response) => {
+  try {
+    const token = req.query.token as string;
+    if (!token) {
+      return sendApiError(res, new ValidationError('Invitation token is required'), 400);
+    }
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const invitation = await InvitationModel.findOne({ tokenHash, status: 'pending' });
+    if (!invitation || new Date() > invitation.expiresAt) {
+      return sendApiError(res, new UnauthorizedError('Invitation is invalid or has expired'), 401);
+    }
+    const tenant = await TenantModel.findOne({ tenantId: invitation.tenantId });
+    return sendApiResponse(res, {
+      email: invitation.email,
+      name: invitation.name,
+      role: invitation.role,
+      department: invitation.department,
+      workspaceName: tenant?.name || 'WorkSphere Workspace',
+      expiresAt: invitation.expiresAt,
+    });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// 7. POST /api/auth/accept-invite
+const AcceptInviteSchema = z.object({
+  token: z.string().min(1, 'Invitation token is required'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one digit'),
+  name: z.string().optional(),
+});
+
+router.post('/accept-invite', async (req: Request, res: Response) => {
+  try {
+    const parseResult = AcceptInviteSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return sendApiError(res, new ValidationError('Validation failed', parseResult.error.flatten().fieldErrors), 422);
+    }
+
+    const { token, password, name } = parseResult.data;
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    const invitation = await InvitationModel.findOne({
+      tokenHash,
+      status: 'pending',
+    });
+
+    if (!invitation) {
+      return sendApiError(res, new UnauthorizedError('Invalid or expired invitation token'), 401);
+    }
+
+    if (new Date() > invitation.expiresAt) {
+      invitation.status = 'expired';
+      await invitation.save();
+      return sendApiError(res, new UnauthorizedError('This invitation link has expired'), 401);
+    }
+
+    const tenant = await TenantModel.findOne({ tenantId: invitation.tenantId });
+    if (!tenant) {
+      return sendApiError(res, new NotFoundError('Workspace not found'), 404);
+    }
+
+    const existingInTenant = await UserModel.findOne({
+      tenantId: invitation.tenantId,
+      email: invitation.email,
+    });
+    if (existingInTenant) {
+      invitation.status = 'accepted';
+      invitation.acceptedAt = new Date();
+      await invitation.save();
+      return sendApiError(res, new ConflictError('You are already a member of this workspace. Please log in.'), 409);
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const userId = generateId('user');
+
+    const newUser = await UserModel.create({
+      userId,
+      tenantId: invitation.tenantId,
+      email: invitation.email,
+      name: name?.trim() || invitation.name,
+      role: invitation.role,
+      department: invitation.department,
+      passwordHash,
+      provider: 'email',
+      emailVerified: true,
+      isActive: true,
+    });
+
+    invitation.status = 'accepted';
+    invitation.acceptedAt = new Date();
+    await invitation.save();
+
+    const payload = {
+      userId: newUser.userId,
+      id: newUser.userId,
+      name: newUser.name,
+      email: newUser.email,
+      tenantId: newUser.tenantId,
+      role: newUser.role,
+    };
+
+    const { accessToken, refreshToken } = generateTokens(payload);
+    const refreshTokenHash = hashToken(refreshToken);
+    await UserModel.updateOne({ userId: newUser.userId }, { $set: { refreshTokenHash } });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    return sendApiResponse(
+      res,
+      {
+        accessToken,
+        tenant: { id: tenant.tenantId, name: tenant.name, slug: tenant.slug },
+        user: {
+          id: newUser.userId,
+          userId: newUser.userId,
+          name: newUser.name,
+          email: newUser.email,
+          tenantId: newUser.tenantId,
+          role: newUser.role,
+          department: newUser.department,
+        },
+      },
+      201
+    );
   } catch (error: any) {
     return sendApiError(res, error);
   }

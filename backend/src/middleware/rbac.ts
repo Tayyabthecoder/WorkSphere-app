@@ -129,6 +129,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'report:read',
     'report:export',
     'user:invite',
+    'user:deactivate',
     'user:read',
     'document:create',
     'document:read',
@@ -202,4 +203,31 @@ export function requirePermission(permission: Permission) {
     }
     next();
   };
+}
+
+export const ROLE_HIERARCHY: Record<UserRole, number> = {
+  superAdmin: 4,
+  orgAdmin: 3,
+  manager: 2,
+  member: 1,
+  viewer: 0,
+};
+
+export function canManageRole(callerRole: UserRole, targetRole: UserRole): boolean {
+  if (callerRole === 'superAdmin') return true;
+  if (callerRole === 'orgAdmin') {
+    // Org Admin manages all workspace users (orgAdmin, manager, member, viewer)
+    return targetRole !== 'superAdmin';
+  }
+  if (callerRole === 'manager') {
+    // Manager manages members and others (member, viewer)
+    return targetRole === 'member' || targetRole === 'viewer';
+  }
+  return false;
+}
+
+export function assertCanManageRole(callerRole: UserRole, targetRole: UserRole, actionDescription = 'assign or modify') {
+  if (!canManageRole(callerRole, targetRole)) {
+    throw new ForbiddenError(`Role '${callerRole}' cannot ${actionDescription} role '${targetRole}'`);
+  }
 }

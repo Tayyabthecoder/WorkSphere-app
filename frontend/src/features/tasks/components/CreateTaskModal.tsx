@@ -246,11 +246,13 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               className="w-full px-3 py-2 bg-surface-card border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-brand-emerald focus:ring-1 focus:ring-brand-emerald"
             >
               <option value="">Unassigned</option>
-              {team.map((member) => (
-                <option key={member.userId} value={member.userId}>
-                  {member.name} ({member.email})
-                </option>
-              ))}
+              {team
+                .filter((member) => member.isActive !== false)
+                .map((member) => (
+                  <option key={member.userId} value={member.userId}>
+                    {member.name} ({member.email})
+                  </option>
+                ))}
             </select>
           </div>
 

@@ -20,8 +20,8 @@ describe('RBAC Middleware & Permissions', () => {
     it('should grant manager timesheet approval and project management permissions', () => {
       expect(hasPermission('manager', 'time:approve')).toBe(true);
       expect(hasPermission('manager', 'task:create')).toBe(true);
-      expect(hasPermission('manager', 'comment:create')).toBe(true);
-      expect(hasPermission('manager', 'user:deactivate')).toBe(false);
+      expect(hasPermission('manager', 'user:deactivate')).toBe(true);
+      expect(hasPermission('manager', 'tenant:manage')).toBe(false);
     });
 
     it('should grant member task and comment abilities, but deny approval', () => {

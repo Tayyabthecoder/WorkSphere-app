@@ -375,18 +375,19 @@ router.get('/summary', async (req: Request, res: Response) => {
 
     // Active Sprint Burn-Down Data Generation
     let burnDownData: Array<{ day: string; date: string; ideal: number; actual: number | null }> = [];
-    if (activeSprintDoc) {
-      const sStart = new Date(activeSprintDoc.startDate);
-      const sEnd = new Date(activeSprintDoc.endDate);
+    const activeSprint = activeSprintDoc as any;
+    if (activeSprint && !Array.isArray(activeSprint)) {
+      const sStart = new Date(activeSprint.startDate);
+      const sEnd = new Date(activeSprint.endDate);
       const sprintDays = Math.max(5, Math.min(30, Math.ceil((sEnd.getTime() - sStart.getTime()) / (1000 * 60 * 60 * 24)) + 1));
 
       const sprintTasks = await TaskModel.find({
         tenantId: user.tenantId,
-        sprintId: activeSprintDoc.sprintId,
+        sprintId: activeSprint.sprintId,
       }).select('storyPoints status').lean();
 
       const totalSprintPts = Math.max(
-        activeSprintDoc.capacityPoints || 0,
+        activeSprint.capacityPoints || 0,
         sprintTasks.reduce((sum, t) => sum + (t.storyPoints || 0), 0)
       );
 

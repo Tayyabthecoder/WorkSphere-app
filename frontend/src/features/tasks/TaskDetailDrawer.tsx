@@ -607,7 +607,9 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                         <AtSign className="w-3 h-3 text-brand-emerald" /> Mention teammate
                       </div>
                       <div className="max-h-36 overflow-y-auto">
-                        {teamMembers.map((m) => (
+                        {teamMembers
+                          .filter((m) => m.isActive !== false)
+                          .map((m) => (
                           <button
                             key={m.userId}
                             type="button"

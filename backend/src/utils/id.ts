@@ -22,6 +22,8 @@ const prefixes = {
   emailTemplate: 'emt',
   retention: 'ret',
   comment: 'cmt',
+  inv: 'inv',
+  invitation: 'inv',
 } as const;
 
 export type IdPrefix = keyof typeof prefixes;
