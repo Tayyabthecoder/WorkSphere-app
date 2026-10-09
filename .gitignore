@@ -44,7 +44,7 @@ coverage/
 .stylelintcache
 
 # AI agent artifacts & local instructions
-.agent/
+.agents/
 
 # Project specifications & documentation
 PRD.md
