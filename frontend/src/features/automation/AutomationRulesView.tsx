@@ -16,12 +16,15 @@ import { Badge } from '../../components/ui/Badge';
 import { AutomationRule } from '../../types';
 import apiClient from '../../api/client';
 import CreateRuleModal from './CreateRuleModal';
+import { useAuthStore } from '../../store/auth';
 
 interface AutomationRulesViewProps {
   projectId?: string;
 }
 
 export const AutomationRulesView: React.FC<AutomationRulesViewProps> = ({ projectId }) => {
+  const user = useAuthStore((state) => state.user);
+  const canManageAutomations = ['superAdmin', 'orgAdmin', 'managingDirector', 'manager'].includes(user?.role || '');
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [projects, setProjects] = useState<{ projectId: string; name: string }[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projectId || 'all');
@@ -123,15 +126,17 @@ export const AutomationRulesView: React.FC<AutomationRulesViewProps> = ({ projec
             ))}
           </select>
 
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={<Plus className="w-4 h-4" />}
-            onClick={() => setIsModalOpen(true)}
-            className="shadow-2xs"
-          >
-            Create Rule
-          </Button>
+          {canManageAutomations && (
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Plus className="w-4 h-4" />}
+              onClick={() => setIsModalOpen(true)}
+              className="shadow-2xs"
+            >
+              Create Rule
+            </Button>
+          )}
         </div>
       </div>
 

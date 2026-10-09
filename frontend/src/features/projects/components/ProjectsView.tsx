@@ -6,6 +6,8 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { CreateProjectModal } from '../CreateProjectModal';
 import { useCurrency } from '../../../store/CurrencyContext';
+import { useAuthStore } from '../../../store/auth';
+import { hasPermission } from '../../../lib/rbac';
 import { Project } from '../../../types';
 import apiClient from '../../../api/client';
 
@@ -15,6 +17,8 @@ interface ProjectsViewProps {
 
 export const ProjectsView: React.FC<ProjectsViewProps> = ({ initialProjects }) => {
   const { formatCurrency } = useCurrency();
+  const user = useAuthStore((state) => state.user);
+  const canCreateProject = hasPermission(user?.role, 'project:create');
   const [projects, setProjects] = useState<Project[]>(initialProjects || []);
   const [isLoading, setIsLoading] = useState(!initialProjects);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,14 +52,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ initialProjects }) =
             Manage your organization&apos;s active and upcoming deliverables.
           </p>
         </div>
-        <Button
-          variant="primary"
-          size="sm"
-          leftIcon={<Plus className="w-4 h-4" />}
-          onClick={() => setIsModalOpen(true)}
-        >
-          New Project
-        </Button>
+        {canCreateProject && (
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Plus className="w-4 h-4" />}
+            onClick={() => setIsModalOpen(true)}
+          >
+            New Project
+          </Button>
+        )}
       </div>
 
       {isLoading ? (

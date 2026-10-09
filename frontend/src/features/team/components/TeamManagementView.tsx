@@ -278,25 +278,27 @@ export const TeamManagementView: React.FC = () => {
           </span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('invitations')}
-          className={`pb-2.5 text-xs font-semibold flex items-center gap-2 border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
-            activeTab === 'invitations'
-              ? 'border-brand-emerald text-brand-emerald'
-              : 'border-transparent text-text-muted hover:text-text-primary'
-          }`}
-        >
-          <div className="flex items-center gap-1.5">
-            <Mail className="w-3.5 h-3.5" />
-            <span>Pending Invitations</span>
-          </div>
-          {invitations.length > 0 && (
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-brand-emerald text-white font-bold">
-              {invitations.length}
-            </span>
-          )}
-        </button>
+        {hasPermission(currentUser?.role, 'user:invite') && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('invitations')}
+            className={`pb-2.5 text-xs font-semibold flex items-center gap-2 border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
+              activeTab === 'invitations'
+                ? 'border-brand-emerald text-brand-emerald'
+                : 'border-transparent text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5" />
+              <span>Pending Invitations</span>
+            </div>
+            {invitations.length > 0 && (
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-brand-emerald text-white font-bold">
+                {invitations.length}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {activeTab === 'invitations' ? (

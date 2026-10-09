@@ -3,6 +3,7 @@ import { ProjectModel } from '../models/Project.js';
 import { ExpenseModel } from '../models/Expense.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
 import { verifyAuth } from '../middleware/auth.js';
+import { assertPermission } from '../middleware/rbac.js';
 
 const router = Router();
 router.use(verifyAuth);
@@ -11,6 +12,7 @@ router.use(verifyAuth);
 router.get('/summary', async (req: Request, res: Response) => {
   try {
     const user = req.user!;
+    assertPermission(user.role, 'budget:read');
     const { projectId } = req.query;
 
     const projectQuery: Record<string, any> = { tenantId: user.tenantId, status: { $ne: 'Archived' } };

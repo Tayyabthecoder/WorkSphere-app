@@ -11,6 +11,7 @@ router.use(verifyAuth);
 
 router.get('/', async (req: Request, res: Response) => {
   try {
+    assertPermission(req.user!.role, 'client:read');
     const clients = await ClientModel.find({ tenantId: req.user!.tenantId }).sort({ name: 1 }).lean();
     return sendApiResponse(res, clients);
   } catch (error: any) {

@@ -5,11 +5,22 @@ import { generateId } from '../utils/id.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
 import { verifyAuth, verifyTenantActive } from '../middleware/auth.js';
 import { assertPermission } from '../middleware/rbac.js';
-import { ValidationError, NotFoundError } from '../utils/errors.js';
+import { ForbiddenError, ValidationError, NotFoundError } from '../utils/errors.js';
+import { UserRole } from '../models/User.js';
 
 const router = Router();
 router.use(verifyAuth);
 router.use(verifyTenantActive);
+
+const ALLOWED_AUTOMATION_ROLES: UserRole[] = ['superAdmin', 'orgAdmin', 'managingDirector', 'manager'];
+
+router.use((req: Request, res: Response, next) => {
+  const user = req.user;
+  if (!user || !ALLOWED_AUTOMATION_ROLES.includes(user.role)) {
+    return sendApiError(res, new ForbiddenError(`Role '${user?.role}' does not have access to automations`), 403);
+  }
+  next();
+});
 
 const TriggerSchema = z.object({
   event: z.enum([

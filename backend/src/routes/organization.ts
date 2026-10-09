@@ -25,6 +25,20 @@ router.get('/', async (req: Request, res: Response) => {
       return sendApiError(res, { code: 'NOT_FOUND', message: 'Organization not found' }, 404);
     }
 
+    const isOrgAdmin = user.role === 'orgAdmin' || user.role === 'superAdmin';
+    if (!isOrgAdmin) {
+      return sendApiResponse(res, {
+        tenantId: tenant.tenantId,
+        name: tenant.name,
+        slug: tenant.slug,
+        status: tenant.status,
+        logoUrl: tenant.logoUrl,
+        timezone: tenant.timezone || 'UTC',
+        language: tenant.language || 'en',
+        country: tenant.country || '',
+      });
+    }
+
     const settings = (tenant.settings || {}) as {
       plan?: string;
       userLimit?: number;

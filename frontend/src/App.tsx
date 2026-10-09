@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Layout & Error Boundary
 import ProtectedRoute from './components/layout/ProtectedRoute';
+import RoleRouteGuard from './components/layout/RoleRouteGuard';
 import PageLoader from './components/ui/PageLoader';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 
@@ -72,7 +73,14 @@ export const App: React.FC = () => {
               <Route path="timeline" element={<GanttPage />} />
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="backlog" element={<SprintBoardPage />} />
-              <Route path="capacity" element={<CapacityPage />} />
+              <Route
+                path="capacity"
+                element={
+                  <RoleRouteGuard allowedRoles={['superAdmin', 'orgAdmin', 'managingDirector', 'hr', 'manager', 'teamLeader']}>
+                    <CapacityPage />
+                  </RoleRouteGuard>
+                }
+              />
             </Route>
 
             <Route path="/sprints" element={<SprintsPage />} />
@@ -80,25 +88,69 @@ export const App: React.FC = () => {
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/gantt" element={<GanttPage />} />
-            <Route path="/capacity" element={<CapacityPage />} />
-            <Route path="/clients" element={<ClientsPage />} />
+            <Route
+              path="/capacity"
+              element={
+                <RoleRouteGuard allowedRoles={['superAdmin', 'orgAdmin', 'managingDirector', 'hr', 'manager', 'teamLeader']}>
+                  <CapacityPage />
+                </RoleRouteGuard>
+              }
+            />
+            <Route
+              path="/clients"
+              element={
+                <RoleRouteGuard allowedRoles={['superAdmin', 'orgAdmin', 'managingDirector', 'manager']}>
+                  <ClientsPage />
+                </RoleRouteGuard>
+              }
+            />
             <Route path="/timesheet" element={<TimesheetPage />} />
             <Route path="/time" element={<Navigate to="/timesheet" replace />} />
-            <Route path="/budget" element={<BudgetPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
+            <Route
+              path="/budget"
+              element={
+                <RoleRouteGuard allowedRoles={['superAdmin', 'orgAdmin', 'managingDirector', 'manager']}>
+                  <BudgetPage />
+                </RoleRouteGuard>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <RoleRouteGuard allowedRoles={['superAdmin', 'orgAdmin', 'managingDirector', 'manager', 'hr']}>
+                  <ReportsPage />
+                </RoleRouteGuard>
+              }
+            />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/team" element={<TeamPage />} />
-            <Route path="/automation" element={<AutomationPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route
+              path="/automation"
+              element={
+                <RoleRouteGuard allowedRoles={['superAdmin', 'orgAdmin', 'managingDirector', 'manager']}>
+                  <AutomationPage />
+                </RoleRouteGuard>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <RoleRouteGuard allowedRoles={['superAdmin', 'orgAdmin']}>
+                  <SettingsPage />
+                </RoleRouteGuard>
+              }
+            />
 
             {/* Admin Hub Routes */}
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="/admin/audit" element={<AdminPage />} />
-            <Route path="/admin/security" element={<AdminPage />} />
-            <Route path="/admin/retention" element={<AdminPage />} />
-            <Route path="/admin/announcements" element={<AdminPage />} />
-            <Route path="/admin/health" element={<AdminPage />} />
-            <Route path="/admin/email-templates" element={<AdminPage />} />
+            <Route element={<RoleRouteGuard allowedRoles={['superAdmin']} />}>
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin/audit" element={<AdminPage />} />
+              <Route path="/admin/security" element={<AdminPage />} />
+              <Route path="/admin/retention" element={<AdminPage />} />
+              <Route path="/admin/announcements" element={<AdminPage />} />
+              <Route path="/admin/health" element={<AdminPage />} />
+              <Route path="/admin/email-templates" element={<AdminPage />} />
+            </Route>
           </Route>
 
           {/* Fallback Catch-all Route */}

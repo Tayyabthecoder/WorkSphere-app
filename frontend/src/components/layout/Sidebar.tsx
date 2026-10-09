@@ -23,7 +23,20 @@ import {
 } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { useAuthStore } from '../../store/auth';
+import { UserRole } from '../../lib/rbac';
 import apiClient from '../../api/client';
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  allowedRoles?: UserRole[];
+}
+
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
 
 interface SidebarProps {
   tenantName?: string;
@@ -50,9 +63,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
 
-  const isSuperAdmin = user?.role === 'superAdmin';
+  const activeRole = (user?.role || userRole) as UserRole;
 
-  const navGroups = [
+  const rawNavGroups: NavGroup[] = [
     {
       title: 'WORKSPACE',
       items: [
@@ -64,14 +77,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { label: 'Calendar', href: '/calendar', icon: CalendarDays },
         { label: 'Gantt', href: '/gantt', icon: GanttChart },
         { label: 'Timesheet', href: '/timesheet', icon: Clock },
-        { label: 'Automations', href: '/automation', icon: Sparkles },
+        {
+          label: 'Automations',
+          href: '/automation',
+          icon: Sparkles,
+          allowedRoles: ['superAdmin', 'orgAdmin', 'managingDirector', 'manager'],
+        },
       ],
     },
     {
       title: 'FINANCE & REPORTS',
       items: [
-        { label: 'Budget & Cost', href: '/budget', icon: DollarSign },
-        { label: 'Analytics', href: '/reports', icon: BarChart3 },
+        {
+          label: 'Budget & Cost',
+          href: '/budget',
+          icon: DollarSign,
+          allowedRoles: ['superAdmin', 'orgAdmin', 'managingDirector', 'manager'],
+        },
+        {
+          label: 'Analytics',
+          href: '/reports',
+          icon: BarChart3,
+          allowedRoles: ['superAdmin', 'orgAdmin', 'managingDirector', 'manager', 'hr'],
+        },
         { label: 'Documents', href: '/documents', icon: FileText },
       ],
     },
@@ -79,18 +107,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'TEAM & CLIENTS',
       items: [
         { label: 'Team Members', href: '/team', icon: Users },
-        { label: 'Capacity', href: '/capacity', icon: Activity },
-        { label: 'Clients', href: '/clients', icon: Building2 },
+        {
+          label: 'Capacity',
+          href: '/capacity',
+          icon: Activity,
+          allowedRoles: ['superAdmin', 'orgAdmin', 'managingDirector', 'hr', 'manager', 'teamLeader'],
+        },
+        {
+          label: 'Clients',
+          href: '/clients',
+          icon: Building2,
+          allowedRoles: ['superAdmin', 'orgAdmin', 'managingDirector', 'manager'],
+        },
       ],
     },
     {
       title: 'ORGANIZATION',
       items: [
-        { label: 'Settings', href: '/settings', icon: Settings },
-        ...(isSuperAdmin ? [{ label: 'Admin Fleet', href: '/admin', icon: ShieldAlert }] : []),
+        {
+          label: 'Settings',
+          href: '/settings',
+          icon: Settings,
+          allowedRoles: ['superAdmin', 'orgAdmin'],
+        },
+        {
+          label: 'Admin Fleet',
+          href: '/admin',
+          icon: ShieldAlert,
+          allowedRoles: ['superAdmin'],
+        },
       ],
     },
   ];
+
+  const navGroups = rawNavGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (!item.allowedRoles) return true;
+        return item.allowedRoles.includes(activeRole);
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const handleSignOut = async () => {
     try {

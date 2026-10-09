@@ -27,6 +27,7 @@ const CreateExpenseSchema = z.object({
 router.get('/', async (req: Request, res: Response) => {
   try {
     const user = req.user!;
+    assertPermission(user.role, 'budget:read');
     const { projectId, category, startDate, endDate, page = '1', limit = '100' } = req.query;
 
     const query: Record<string, any> = { tenantId: user.tenantId };
@@ -89,7 +90,7 @@ router.get('/', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const user = req.user!;
-    assertPermission(user.role, 'project:update');
+    assertPermission(user.role, 'budget:write');
 
     const parseResult = CreateExpenseSchema.safeParse(req.body);
     if (!parseResult.success) {
@@ -140,7 +141,7 @@ router.post('/', async (req: Request, res: Response) => {
 router.delete('/:expenseId', async (req: Request, res: Response) => {
   try {
     const user = req.user!;
-    assertPermission(user.role, 'project:update');
+    assertPermission(user.role, 'budget:write');
 
     const expense = await ExpenseModel.findOneAndDelete({
       tenantId: user.tenantId,

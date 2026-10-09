@@ -8,8 +8,12 @@ import { CreateClientModal } from './CreateClientModal';
 import { EditClientModal } from './EditClientModal';
 import { ClientProjectsDrawer } from './ClientProjectsDrawer';
 import { Button } from '../../../components/ui/Button';
+import { useAuthStore } from '../../../store/auth';
+import { hasPermission } from '../../../lib/rbac';
 
 export const ClientManagementView: React.FC = () => {
+  const user = useAuthStore((state) => state.user);
+  const canCreateClient = hasPermission(user?.role, 'client:create');
   const { data: clients = [], isLoading: isLoadingClients } = useClients();
   const { data: projects = [] } = useProjects();
   const deleteClient = useDeleteClient();
@@ -72,15 +76,17 @@ export const ClientManagementView: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => setIsCreateOpen(true)}
-          className="text-xs self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4 mr-1.5" />
-          Add Client
-        </Button>
+        {canCreateClient && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsCreateOpen(true)}
+            className="text-xs self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
+            Add Client
+          </Button>
+        )}
       </div>
 
       {/* KPI Stats Row */}
