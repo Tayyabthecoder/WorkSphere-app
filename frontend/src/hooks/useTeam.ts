@@ -64,6 +64,9 @@ export const useAddMember = () => {
       name: string;
       role: string;
       department?: string;
+      teamId?: string | null;
+      reportsToUserId?: string | null;
+      jobTitle?: string;
       password?: string;
     }) => {
       const res = await apiClient.post('/v1/team/add', data);
@@ -71,6 +74,7 @@ export const useAddMember = () => {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['team'] });
+      qc.invalidateQueries({ queryKey: ['teams'] });
     },
   });
 };
@@ -78,12 +82,22 @@ export const useAddMember = () => {
 export const useInviteMember = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { email: string; name: string; role: string; department?: string; password?: string }) => {
+    mutationFn: async (data: {
+      email: string;
+      name: string;
+      role: string;
+      department?: string;
+      teamId?: string | null;
+      reportsToUserId?: string | null;
+      jobTitle?: string;
+      password?: string;
+    }) => {
       const res = await apiClient.post('/v1/team/add', data);
       return res.data?.data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['team'] });
+      qc.invalidateQueries({ queryKey: ['teams'] });
     },
   });
 };
@@ -123,6 +137,7 @@ export const useUpdateMember = () => {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['team'] });
+      qc.invalidateQueries({ queryKey: ['teams'] });
     },
   });
 };

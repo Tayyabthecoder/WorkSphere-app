@@ -15,6 +15,7 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { useToast } from '../../../components/ui/ToastContext';
 import { useAddMember } from '../../../hooks/useTeam';
+import { useTeams } from '../../../hooks/useTeams';
 import { useAuthStore } from '../../../store/auth';
 import { getAssignableRoles } from '../../../lib/rbac';
 
@@ -34,16 +35,26 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
   const { toast } = useToast();
   const addMemberMutation = useAddMember();
   const currentUser = useAuthStore((state) => state.user);
+  const { data: teams = [] } = useTeams();
 
   const assignableRoles = useMemo(() => {
     return getAssignableRoles(currentUser?.role, true);
   }, [currentUser?.role]);
+
+  const selectableTeams = useMemo(() => {
+    if (currentUser?.role === 'manager') {
+      return teams.filter((t) => t.managerId === currentUser.userId);
+    }
+    return teams;
+  }, [teams, currentUser]);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState(assignableRoles[0]?.value || 'member');
   const [department, setDepartment] = useState('Engineering');
   const [customDept, setCustomDept] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [teamId, setTeamId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -104,6 +115,8 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
         email: email.trim().toLowerCase(),
         role,
         department: resolvedDept,
+        jobTitle: jobTitle.trim() || undefined,
+        teamId: teamId || null,
         password: resolvedPassword,
       });
 
@@ -139,6 +152,8 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
     setRole(assignableRoles[0]?.value || 'member');
     setDepartment('Engineering');
     setCustomDept('');
+    setJobTitle('');
+    setTeamId('');
     setPassword('');
     setShowPassword(false);
     setError('');
@@ -267,6 +282,33 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
                   </option>
                 ))}
                 <option value="custom">+ New Department...</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="font-semibold text-text-primary block mb-1">Job Title / Designation</label>
+              <Input
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="e.g. Senior Frontend Engineer"
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold text-text-primary block mb-1">Assigned Delivery Squad</label>
+              <select
+                value={teamId}
+                onChange={(e) => setTeamId(e.target.value)}
+                className="w-full h-9 px-3 rounded-lg text-xs bg-surface-low border border-border/80 text-text-primary focus:outline-none focus:border-brand-emerald cursor-pointer"
+              >
+                <option value="">(Unassigned / General Roster)</option>
+                {selectableTeams.map((t) => (
+                  <option key={t.teamId} value={t.teamId}>
+                    {t.name} (Lead: {t.manager?.name || 'Manager'})
+                  </option>
+                ))}
               </select>
             </div>
           </div>

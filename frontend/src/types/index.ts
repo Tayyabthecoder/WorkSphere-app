@@ -87,9 +87,24 @@ export interface TeamMember {
   tenantId: string;
   name: string;
   email: string;
-  role: 'superAdmin' | 'orgAdmin' | 'manager' | 'member' | 'viewer';
+  role: 'superAdmin' | 'orgAdmin' | 'managingDirector' | 'hr' | 'manager' | 'teamLeader' | 'member' | 'viewer';
   avatarUrl?: string;
   department?: string;
+  teamId?: string | null;
+  reportsToUserId?: string | null;
+  jobTitle?: string;
+  team?: {
+    teamId: string;
+    name: string;
+    department?: string;
+    colorLabel?: string;
+  } | null;
+  reportsToUser?: {
+    userId: string;
+    name: string;
+    role: string;
+    jobTitle?: string;
+  } | null;
   isActive: boolean;
   activeTasks?: number;
   completedTasks?: number;
@@ -98,13 +113,46 @@ export interface TeamMember {
   createdAt?: string;
 }
 
+export interface Team {
+  teamId: string;
+  tenantId: string;
+  name: string;
+  description?: string;
+  department: string;
+  managerId: string;
+  leaderId?: string | null;
+  manager?: {
+    userId: string;
+    name: string;
+    email: string;
+    avatarUrl?: string;
+    role: string;
+    jobTitle?: string;
+  };
+  leader?: {
+    userId: string;
+    name: string;
+    email: string;
+    avatarUrl?: string;
+    role: string;
+    jobTitle?: string;
+  };
+  memberIds: string[];
+  members?: TeamMember[];
+  colorLabel?: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Invitation {
   invitationId: string;
   tenantId: string;
   email: string;
   name: string;
-  role: 'superAdmin' | 'orgAdmin' | 'manager' | 'member' | 'viewer';
+  role: 'superAdmin' | 'orgAdmin' | 'managingDirector' | 'hr' | 'manager' | 'teamLeader' | 'member' | 'viewer';
   department?: string;
+  teamId?: string | null;
   invitedByUserId: string;
   status: 'pending' | 'accepted' | 'expired' | 'revoked';
   expiresAt: string;

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { UserModel, UserRole } from '../models/User.js';
+import { TeamModel } from '../models/Team.js';
 import { TaskModel } from '../models/Task.js';
 import { ProjectModel } from '../models/Project.js';
 import { ActivityLogModel } from '../models/ActivityLog.js';
@@ -10,7 +11,7 @@ import { TenantModel } from '../models/Tenant.js';
 import { generateId } from '../utils/id.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
 import { verifyAuth } from '../middleware/auth.js';
-import { assertPermission, assertCanManageRole, canManageRole } from '../middleware/rbac.js';
+import { assertPermission, assertCanManageRole, canManageRole, canCallerManageMember } from '../middleware/rbac.js';
 import { ValidationError, NotFoundError, ConflictError, ForbiddenError } from '../utils/errors.js';
 import { sendEmail } from '../utils/email.js';
 import { emitToTenant } from '../socket/index.js';
@@ -26,7 +27,7 @@ router.use(verifyAuth);
 router.get('/', async (req: Request, res: Response) => {
   try {
     const user = req.user!;
-    const { department, status, search } = req.query;
+    const { department, status, search, teamId } = req.query;
 
     const query: Record<string, any> = { tenantId: user.tenantId };
 
@@ -40,6 +41,10 @@ router.get('/', async (req: Request, res: Response) => {
       query.department = department;
     }
 
+    if (teamId && typeof teamId === 'string' && teamId !== 'ALL' && teamId !== 'all') {
+      query.teamId = teamId;
+    }
+
     if (search && typeof search === 'string' && search.trim()) {
       const q = search.trim();
       query.$or = [
@@ -47,10 +52,24 @@ router.get('/', async (req: Request, res: Response) => {
         { email: { $regex: q, $options: 'i' } },
         { role: { $regex: q, $options: 'i' } },
         { department: { $regex: q, $options: 'i' } },
+        { jobTitle: { $regex: q, $options: 'i' } },
       ];
     }
 
     const users = await UserModel.find(query).select('-passwordHash -refreshTokenHash').lean();
+
+    // Fetch all active teams in this tenant to enrich squad names
+    const teams = await TeamModel.find({ tenantId: user.tenantId, isActive: true }).lean();
+    const teamMap = new Map(teams.map((t) => [t.teamId, t]));
+
+    // Fetch reporting managers
+    const reportsToIds = [...new Set(users.map((u) => u.reportsToUserId).filter(Boolean) as string[])];
+    const managers = reportsToIds.length > 0
+      ? await UserModel.find({ tenantId: user.tenantId, userId: { $in: reportsToIds } })
+          .select('userId name role jobTitle')
+          .lean()
+      : [];
+    const managerMap = new Map(managers.map((m) => [m.userId, m]));
 
     // Aggregation query across all team members for active and completed task counts
     const taskStats = await TaskModel.aggregate([
@@ -80,8 +99,27 @@ router.get('/', async (req: Request, res: Response) => {
 
     const enriched = users.map((member) => {
       const stats = statMap.get(member.userId);
+      const teamObj = member.teamId ? teamMap.get(member.teamId) : null;
+      const reportsToObj = member.reportsToUserId ? managerMap.get(member.reportsToUserId) : null;
+
       return {
         ...member,
+        team: teamObj
+          ? {
+              teamId: teamObj.teamId,
+              name: teamObj.name,
+              department: teamObj.department,
+              colorLabel: teamObj.colorLabel,
+            }
+          : null,
+        reportsToUser: reportsToObj
+          ? {
+              userId: reportsToObj.userId,
+              name: reportsToObj.name,
+              role: reportsToObj.role,
+              jobTitle: reportsToObj.jobTitle,
+            }
+          : null,
         activeTasks: stats?.activeTasks || 0,
         completedTasks: stats?.completedTasks || 0,
       };
@@ -125,7 +163,7 @@ const handleAddMember = async (req: Request, res: Response) => {
     const user = req.user!;
     assertPermission(user.role, 'user:invite');
 
-    const { email, name, role = 'member', department = 'Engineering', password } = req.body;
+    const { email, name, role = 'member', department = 'Engineering', password, teamId, reportsToUserId, jobTitle } = req.body;
 
     if (!email || !name) {
       return sendApiError(res, new ValidationError('Name and email are required'), 400);
@@ -136,11 +174,11 @@ const handleAddMember = async (req: Request, res: Response) => {
     // Enforce role hierarchy: cannot add a user with role equal to or higher than caller
     assertCanManageRole(user.role, role as UserRole, 'add a user with');
 
-    // Strict RBAC: Managers may only onboard members with 'member' or 'viewer' roles
-    if (user.role === 'manager' && role !== 'member' && role !== 'viewer') {
+    // Strict RBAC: Managers may only onboard members with 'teamLeader', 'member' or 'viewer' roles
+    if (user.role === 'manager' && role !== 'teamLeader' && role !== 'member' && role !== 'viewer') {
       return sendApiError(
         res,
-        new ForbiddenError(`Managers are strictly restricted to adding 'member' or 'viewer' roles`),
+        new ForbiddenError(`Managers are strictly restricted to adding 'teamLeader', 'member' or 'viewer' roles`),
         403
       );
     }
@@ -196,6 +234,31 @@ const handleAddMember = async (req: Request, res: Response) => {
       return sendApiError(res, new ConflictError('A team member with this email already belongs to this workspace'), 409);
     }
 
+    // Validate squad assignment and reporting structure
+    let assignedTeamId = teamId || null;
+    let assignedReportsTo = reportsToUserId || null;
+
+    if (assignedTeamId) {
+      const targetTeam = await TeamModel.findOne({
+        tenantId: user.tenantId,
+        teamId: assignedTeamId,
+        isActive: true,
+      });
+      if (!targetTeam) {
+        return sendApiError(res, new NotFoundError('Assigned squad not found'), 404);
+      }
+
+      if (user.role === 'manager' && targetTeam.managerId !== user.userId) {
+        return sendApiError(res, new ForbiddenError('Managers can only assign members to their own squads'), 403);
+      }
+
+      if (!assignedReportsTo) {
+        assignedReportsTo = targetTeam.managerId;
+      }
+    } else if (user.role === 'manager') {
+      assignedReportsTo = user.userId;
+    }
+
     // Resolve initial password (provided or generated secure password)
     const initialPassword =
       password && String(password).trim().length >= 8
@@ -212,11 +275,21 @@ const handleAddMember = async (req: Request, res: Response) => {
       name: name.trim(),
       role: role as UserRole,
       department,
+      teamId: assignedTeamId,
+      reportsToUserId: assignedReportsTo,
+      jobTitle: jobTitle ? String(jobTitle).trim() : '',
       passwordHash,
       provider: 'email',
       emailVerified: true,
       isActive: true,
     });
+
+    if (assignedTeamId) {
+      await TeamModel.updateOne(
+        { tenantId: user.tenantId, teamId: assignedTeamId },
+        { $addToSet: { memberIds: userId } }
+      );
+    }
 
     await ActivityLogModel.create({
       logId: generateId('log'),
@@ -274,11 +347,11 @@ router.post('/invite', async (req: Request, res: Response) => {
     // Enforce role hierarchy: cannot invite a user with role equal to or higher than caller
     assertCanManageRole(user.role, role as UserRole, 'invite a user with');
 
-    // Strict RBAC: Managers may only onboard members with 'member' or 'viewer' roles
-    if (user.role === 'manager' && role !== 'member' && role !== 'viewer') {
+    // Strict RBAC: Managers may only onboard members with 'teamLeader', 'member' or 'viewer' roles
+    if (user.role === 'manager' && role !== 'teamLeader' && role !== 'member' && role !== 'viewer') {
       return sendApiError(
         res,
-        new ForbiddenError(`Managers are strictly restricted to inviting 'member' or 'viewer' roles`),
+        new ForbiddenError(`Managers are strictly restricted to inviting 'teamLeader', 'member' or 'viewer' roles`),
         403
       );
     }
@@ -558,7 +631,7 @@ router.patch('/:userId', async (req: Request, res: Response) => {
     assertPermission(user.role, 'user:deactivate');
 
     const targetUserId = req.params.userId;
-    const { role, department, isActive } = req.body;
+    const { role, department, isActive, teamId, reportsToUserId, jobTitle } = req.body;
 
     const targetMember = await UserModel.findOne({
       tenantId: user.tenantId,
@@ -569,13 +642,24 @@ router.patch('/:userId', async (req: Request, res: Response) => {
       return sendApiError(res, new NotFoundError('Member not found'), 404);
     }
 
-    // Role hierarchy: Caller cannot modify a member whose role they cannot manage
-    if (user.userId !== targetUserId && !canManageRole(user.role, targetMember.role)) {
-      return sendApiError(
-        res,
-        new ForbiddenError(`Your role '${user.role}' cannot modify members with role '${targetMember.role}'`),
-        403
-      );
+    // Role hierarchy & squad boundary check: Caller cannot modify members they cannot manage
+    if (user.userId !== targetUserId) {
+      if (!canManageRole(user.role, targetMember.role)) {
+        return sendApiError(
+          res,
+          new ForbiddenError(`Your role '${user.role}' cannot modify members with role '${targetMember.role}'`),
+          403
+        );
+      }
+
+      const hasAuthority = await canCallerManageMember(user, targetMember);
+      if (!hasAuthority) {
+        return sendApiError(
+          res,
+          new ForbiddenError('You do not have administrative authority over members outside your squad'),
+          403
+        );
+      }
     }
 
     // If changing role:
@@ -601,6 +685,53 @@ router.patch('/:userId', async (req: Request, res: Response) => {
       targetMember.department = department;
     }
 
+    // If updating team assignment:
+    if (teamId !== undefined && teamId !== targetMember.teamId) {
+      if (user.role === 'manager' && teamId) {
+        const managedTeam = await TeamModel.findOne({
+          tenantId: user.tenantId,
+          teamId,
+          managerId: user.userId,
+          isActive: true,
+        });
+        if (!managedTeam) {
+          return sendApiError(res, new ForbiddenError('Managers can only assign members to their own squads'), 403);
+        }
+      }
+
+      // Remove from previous team roster
+      if (targetMember.teamId) {
+        await TeamModel.updateOne(
+          { tenantId: user.tenantId, teamId: targetMember.teamId },
+          { $pull: { memberIds: targetUserId } }
+        );
+      }
+
+      // Add to new team roster
+      if (teamId) {
+        const newTeam = await TeamModel.findOne({ tenantId: user.tenantId, teamId, isActive: true });
+        if (newTeam) {
+          await TeamModel.updateOne(
+            { tenantId: user.tenantId, teamId },
+            { $addToSet: { memberIds: targetUserId } }
+          );
+          targetMember.reportsToUserId = newTeam.managerId;
+        }
+      } else {
+        targetMember.reportsToUserId = null;
+      }
+
+      targetMember.teamId = teamId || null;
+    }
+
+    if (reportsToUserId !== undefined) {
+      targetMember.reportsToUserId = reportsToUserId || null;
+    }
+
+    if (jobTitle !== undefined) {
+      targetMember.jobTitle = String(jobTitle).trim();
+    }
+
     // If toggling active status:
     if (isActive !== undefined && isActive !== targetMember.isActive) {
       if (user.userId === targetUserId && isActive === false) {
@@ -609,6 +740,12 @@ router.patch('/:userId', async (req: Request, res: Response) => {
       targetMember.isActive = Boolean(isActive);
       if (!targetMember.isActive) {
         targetMember.refreshTokenHash = null;
+        if (targetMember.teamId) {
+          await TeamModel.updateOne(
+            { tenantId: user.tenantId, teamId: targetMember.teamId },
+            { $pull: { memberIds: targetUserId } }
+          );
+        }
       }
     }
 
@@ -621,7 +758,7 @@ router.patch('/:userId', async (req: Request, res: Response) => {
       action: 'updated_member',
       entityType: 'member',
       entityId: targetUserId,
-      metadata: { role, department, isActive },
+      metadata: { role, department, isActive, teamId: targetMember.teamId },
     });
 
     const sanitized = targetMember.toObject();
@@ -669,6 +806,15 @@ router.post('/:userId/deactivate', async (req: Request, res: Response) => {
       );
     }
 
+    const hasAuthority = await canCallerManageMember(user, targetMember);
+    if (!hasAuthority) {
+      return sendApiError(
+        res,
+        new ForbiddenError('You do not have authority to deactivate members outside your squad'),
+        403
+      );
+    }
+
     // If a replacement assignee is provided, verify they belong to this workspace and are active
     if (reassignToUserId) {
       const replacementMember = await UserModel.findOne({
@@ -710,6 +856,13 @@ router.post('/:userId/deactivate', async (req: Request, res: Response) => {
     targetMember.isActive = false;
     targetMember.refreshTokenHash = null;
     await targetMember.save();
+
+    if (targetMember.teamId) {
+      await TeamModel.updateOne(
+        { tenantId: user.tenantId, teamId: targetMember.teamId },
+        { $pull: { memberIds: targetUserId } }
+      );
+    }
 
     await ActivityLogModel.create({
       logId: generateId('log'),

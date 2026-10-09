@@ -14,6 +14,9 @@ import {
   Activity,
   UserCheck,
   UserX,
+  Network,
+  FolderKanban,
+  GitBranch,
 } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
@@ -25,7 +28,10 @@ import { AddMemberModal } from './AddMemberModal';
 import { DeactivateMemberModal } from './DeactivateMemberModal';
 import { MemberDetailDrawer } from './MemberDetailDrawer';
 import { PendingInvitationsTable } from './PendingInvitationsTable';
+import { TeamsGridView } from './TeamsGridView';
+import { OrgChartView } from './OrgChartView';
 import { useTeam, useInvitations, useUpdateMember } from '../../../hooks/useTeam';
+import { useTeams } from '../../../hooks/useTeams';
 import { TeamMember } from '../../../types';
 import {
   hasPermission,
@@ -40,11 +46,12 @@ export const TeamManagementView: React.FC = () => {
 
   // Queries
   const { data: members = [], isLoading, refetch } = useTeam();
+  const { data: teams = [], refetch: refetchTeams } = useTeams();
   const { data: invitations = [] } = useInvitations();
   const updateMemberMutation = useUpdateMember();
 
   // Navigation and Filter States
-  const [activeTab, setActiveTab] = useState<'members' | 'invitations'>('members');
+  const [activeTab, setActiveTab] = useState<'members' | 'squads' | 'orgchart' | 'invitations'>('members');
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'deactivated'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -201,7 +208,10 @@ export const TeamManagementView: React.FC = () => {
             variant="outline"
             size="sm"
             leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />}
-            onClick={() => refetch()}
+            onClick={() => {
+              refetch();
+              refetchTeams();
+            }}
           >
             Refresh
           </Button>
@@ -219,16 +229,17 @@ export const TeamManagementView: React.FC = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-4 border-b border-border">
+      <div className="flex items-center gap-4 border-b border-border overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveTab('members')}
-          className={`pb-2.5 text-xs font-semibold flex items-center gap-2 border-b-2 transition-colors cursor-pointer ${
+          className={`pb-2.5 text-xs font-semibold flex items-center gap-2 border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
             activeTab === 'members'
               ? 'border-brand-emerald text-brand-emerald'
               : 'border-transparent text-text-muted hover:text-text-primary'
           }`}
         >
+          <Users className="w-3.5 h-3.5" />
           <span>Workspace Members</span>
           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-surface-low text-text-secondary">
             {members.length}
@@ -237,8 +248,40 @@ export const TeamManagementView: React.FC = () => {
 
         <button
           type="button"
+          onClick={() => setActiveTab('squads')}
+          className={`pb-2.5 text-xs font-semibold flex items-center gap-2 border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
+            activeTab === 'squads'
+              ? 'border-brand-emerald text-brand-emerald'
+              : 'border-transparent text-text-muted hover:text-text-primary'
+          }`}
+        >
+          <FolderKanban className="w-3.5 h-3.5" />
+          <span>Delivery Squads</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-surface-low text-text-secondary">
+            {teams.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('orgchart')}
+          className={`pb-2.5 text-xs font-semibold flex items-center gap-2 border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
+            activeTab === 'orgchart'
+              ? 'border-brand-emerald text-brand-emerald'
+              : 'border-transparent text-text-muted hover:text-text-primary'
+          }`}
+        >
+          <Network className="w-3.5 h-3.5" />
+          <span>Organization Chart</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-sm bg-brand-emerald/10 text-brand-emerald">
+            Hierarchy
+          </span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('invitations')}
-          className={`pb-2.5 text-xs font-semibold flex items-center gap-2 border-b-2 transition-colors cursor-pointer ${
+          className={`pb-2.5 text-xs font-semibold flex items-center gap-2 border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
             activeTab === 'invitations'
               ? 'border-brand-emerald text-brand-emerald'
               : 'border-transparent text-text-muted hover:text-text-primary'
@@ -258,6 +301,22 @@ export const TeamManagementView: React.FC = () => {
 
       {activeTab === 'invitations' ? (
         <PendingInvitationsTable />
+      ) : activeTab === 'squads' ? (
+        <TeamsGridView
+          onMemberSelect={(m) => {
+            setSelectedMember(m);
+            setIsDrawerOpen(true);
+          }}
+        />
+      ) : activeTab === 'orgchart' ? (
+        <OrgChartView
+          members={members}
+          teams={teams}
+          onMemberSelect={(m) => {
+            setSelectedMember(m);
+            setIsDrawerOpen(true);
+          }}
+        />
       ) : (
         <>
           {/* Filter and Search Bar */}
@@ -342,6 +401,8 @@ export const TeamManagementView: React.FC = () => {
                         <ArrowUpDown className="w-3 h-3" />
                       </div>
                     </th>
+                    <th className="py-3 px-3">Squad</th>
+                    <th className="py-3 px-3">Reports To</th>
                     <th
                       className="py-3 px-3 cursor-pointer hover:text-text-primary select-none"
                       onClick={() => handleSort('activeTasks')}
@@ -358,13 +419,13 @@ export const TeamManagementView: React.FC = () => {
                 <tbody className="divide-y divide-border/60">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-text-muted">
+                      <td colSpan={8} className="py-12 text-center text-text-muted">
                         Loading team directory...
                       </td>
                     </tr>
                   ) : filteredMembers.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-text-muted">
+                      <td colSpan={8} className="py-12 text-center text-text-muted">
                         No team members found matching your search.
                       </td>
                     </tr>
@@ -395,6 +456,11 @@ export const TeamManagementView: React.FC = () => {
                                   </span>
                                 )}
                               </span>
+                              {member.jobTitle && (
+                                <span className="text-brand-emerald text-[10px] font-medium truncate">
+                                  {member.jobTitle}
+                                </span>
+                              )}
                               <span className="text-text-secondary text-[11px]">
                                 {member.email}
                               </span>
@@ -442,6 +508,33 @@ export const TeamManagementView: React.FC = () => {
                           <span className="text-text-secondary font-medium">
                             {member.department || 'General'}
                           </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          {member.team ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-low border border-border/60">
+                              <span
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{ backgroundColor: member.team.colorLabel || '#0D9488' }}
+                              />
+                              <span className="text-text-primary truncate max-w-[120px]">{member.team.name}</span>
+                            </span>
+                          ) : (
+                            <span className="text-text-muted text-[11px]">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3">
+                          {member.reportsToUser ? (
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-text-primary text-xs font-medium truncate max-w-[130px]">
+                                {member.reportsToUser.name}
+                              </span>
+                              <span className="text-text-muted text-[10px] truncate max-w-[130px]">
+                                {member.reportsToUser.jobTitle || member.reportsToUser.role}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-text-muted text-[11px]">—</span>
+                          )}
                         </td>
                         <td className="py-3 px-3 font-mono">
                           <span className="font-semibold text-text-primary">

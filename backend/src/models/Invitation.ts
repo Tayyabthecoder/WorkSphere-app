@@ -10,6 +10,7 @@ export interface IInvitation extends Document {
   name: string;
   role: UserRole;
   department?: string;
+  teamId?: string | null;
   tokenHash: string;
   invitedByUserId: string;
   status: InvitationStatus;
@@ -27,11 +28,12 @@ const InvitationSchema = new Schema<IInvitation>(
     name: { type: String, required: true, trim: true },
     role: {
       type: String,
-      enum: ['superAdmin', 'orgAdmin', 'manager', 'member', 'viewer'],
+      enum: ['superAdmin', 'orgAdmin', 'managingDirector', 'hr', 'manager', 'teamLeader', 'member', 'viewer'],
       default: 'member',
       required: true,
     },
     department: { type: String, default: 'Engineering' },
+    teamId: { type: String, default: null, index: true },
     tokenHash: { type: String, required: true, unique: true, index: true },
     invitedByUserId: { type: String, required: true, index: true },
     status: {

@@ -1,6 +1,14 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export type UserRole = 'superAdmin' | 'orgAdmin' | 'manager' | 'member' | 'viewer';
+export type UserRole =
+  | 'superAdmin'
+  | 'orgAdmin'
+  | 'managingDirector'
+  | 'hr'
+  | 'manager'
+  | 'teamLeader'
+  | 'member'
+  | 'viewer';
 
 export interface IUser extends Document {
   userId: string;
@@ -15,6 +23,9 @@ export interface IUser extends Document {
   emailVerified: boolean;
   isActive: boolean;
   department?: string;
+  teamId?: string | null;
+  reportsToUserId?: string | null;
+  jobTitle?: string;
   timezone?: string;
   notificationPrefs?: Record<string, unknown>;
   createdAt: Date;
@@ -32,7 +43,7 @@ const UserSchema = new Schema<IUser>(
     avatarUrl: { type: String },
     role: {
       type: String,
-      enum: ['superAdmin', 'orgAdmin', 'manager', 'member', 'viewer'],
+      enum: ['superAdmin', 'orgAdmin', 'managingDirector', 'hr', 'manager', 'teamLeader', 'member', 'viewer'],
       default: 'member',
       index: true,
     },
@@ -40,6 +51,9 @@ const UserSchema = new Schema<IUser>(
     emailVerified: { type: Boolean, default: true },
     isActive: { type: Boolean, default: true, index: true },
     department: { type: String },
+    teamId: { type: String, default: null, index: true },
+    reportsToUserId: { type: String, default: null, index: true },
+    jobTitle: { type: String, default: '' },
     timezone: { type: String, default: 'UTC' },
     notificationPrefs: { type: Schema.Types.Mixed, default: {} },
   },

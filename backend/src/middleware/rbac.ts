@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { UserRole } from '../models/User.js';
+import { TeamModel } from '../models/Team.js';
 import { ForbiddenError } from '../utils/errors.js';
 import { sendApiError } from '../utils/apiResponse.js';
 
@@ -114,6 +115,62 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'comment:delete',
     'time:approve',
   ],
+  managingDirector: [
+    'project:create',
+    'project:read',
+    'project:update',
+    'project:delete',
+    'task:create',
+    'task:read',
+    'task:update',
+    'task:delete',
+    'time:log',
+    'time:read',
+    'budget:read',
+    'budget:write',
+    'report:read',
+    'report:export',
+    'user:invite',
+    'user:deactivate',
+    'user:read',
+    'document:create',
+    'document:read',
+    'document:update',
+    'document:delete',
+    'folder:create',
+    'folder:delete',
+    'file:upload',
+    'file:delete',
+    'client:create',
+    'client:read',
+    'client:update',
+    'client:delete',
+    'comment:create',
+    'comment:read',
+    'comment:update',
+    'comment:delete',
+    'time:approve',
+  ],
+  hr: [
+    'project:read',
+    'task:read',
+    'time:read',
+    'report:read',
+    'report:export',
+    'user:invite',
+    'user:deactivate',
+    'user:read',
+    'document:create',
+    'document:read',
+    'document:update',
+    'folder:create',
+    'file:upload',
+    'client:read',
+    'comment:create',
+    'comment:read',
+    'comment:update',
+    'comment:delete',
+  ],
   manager: [
     'project:create',
     'project:read',
@@ -143,6 +200,28 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'client:read',
     'client:update',
     'client:delete',
+    'comment:create',
+    'comment:read',
+    'comment:update',
+    'comment:delete',
+    'time:approve',
+  ],
+  teamLeader: [
+    'project:read',
+    'task:create',
+    'task:read',
+    'task:update',
+    'task:delete',
+    'time:log',
+    'time:read',
+    'report:read',
+    'user:read',
+    'document:create',
+    'document:read',
+    'document:update',
+    'folder:create',
+    'file:upload',
+    'client:read',
     'comment:create',
     'comment:read',
     'comment:update',
@@ -206,22 +285,48 @@ export function requirePermission(permission: Permission) {
 }
 
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
-  superAdmin: 4,
-  orgAdmin: 3,
-  manager: 2,
-  member: 1,
-  viewer: 0,
+  superAdmin: 6,
+  orgAdmin: 5,
+  managingDirector: 4,
+  hr: 3.5,
+  manager: 3,
+  teamLeader: 2.5,
+  member: 2,
+  viewer: 1,
 };
 
 export function canManageRole(callerRole: UserRole, targetRole: UserRole): boolean {
   if (callerRole === 'superAdmin') return true;
   if (callerRole === 'orgAdmin') {
-    // Org Admin manages all workspace users (orgAdmin, manager, member, viewer)
+    // Org Admin manages all workspace users (orgAdmin, managingDirector, hr, manager, teamLeader, member, viewer)
     return targetRole !== 'superAdmin';
   }
+  if (callerRole === 'managingDirector') {
+    // Managing Director manages hr, managers, team leaders, members, viewers
+    return (
+      targetRole === 'hr' ||
+      targetRole === 'manager' ||
+      targetRole === 'teamLeader' ||
+      targetRole === 'member' ||
+      targetRole === 'viewer'
+    );
+  }
+  if (callerRole === 'hr') {
+    // HR manages managers, team leaders, members, viewers across the workspace
+    return (
+      targetRole === 'manager' ||
+      targetRole === 'teamLeader' ||
+      targetRole === 'member' ||
+      targetRole === 'viewer'
+    );
+  }
   if (callerRole === 'manager') {
-    // Manager manages members and others (member, viewer)
-    return targetRole === 'member' || targetRole === 'viewer';
+    // Manager manages team leaders, members, and viewers
+    return (
+      targetRole === 'teamLeader' ||
+      targetRole === 'member' ||
+      targetRole === 'viewer'
+    );
   }
   return false;
 }
@@ -230,4 +335,41 @@ export function assertCanManageRole(callerRole: UserRole, targetRole: UserRole, 
   if (!canManageRole(callerRole, targetRole)) {
     throw new ForbiddenError(`Role '${callerRole}' cannot ${actionDescription} role '${targetRole}'`);
   }
+}
+
+/**
+ * Scoped boundary check: verifies if caller has authority over target member.
+ * - superAdmin, orgAdmin, managingDirector, hr: global authority over manageable roles.
+ * - manager: strictly scoped to members who belong to a team led by this manager.
+ */
+export async function canCallerManageMember(
+  caller: { userId: string; role: UserRole; tenantId: string },
+  targetUser: { userId: string; role: UserRole; teamId?: string | null }
+): Promise<boolean> {
+  if (caller.userId === targetUser.userId) return false;
+  if (!canManageRole(caller.role, targetUser.role)) return false;
+
+  if (
+    caller.role === 'superAdmin' ||
+    caller.role === 'orgAdmin' ||
+    caller.role === 'managingDirector' ||
+    caller.role === 'hr'
+  ) {
+    return true;
+  }
+
+  if (caller.role === 'manager') {
+    if (!targetUser.teamId) {
+      return true;
+    }
+    const team = await TeamModel.findOne({
+      tenantId: caller.tenantId,
+      teamId: targetUser.teamId,
+      managerId: caller.userId,
+      isActive: true,
+    });
+    return Boolean(team);
+  }
+
+  return false;
 }

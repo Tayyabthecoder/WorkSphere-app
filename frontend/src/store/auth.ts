@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { UserRole } from '../lib/rbac';
 
 export interface User {
   id: string;
@@ -6,9 +7,12 @@ export interface User {
   name?: string;
   email: string;
   tenantId: string;
-  role: 'superAdmin' | 'orgAdmin' | 'manager' | 'member' | 'viewer';
+  role: UserRole;
   avatarUrl?: string;
   department?: string;
+  teamId?: string | null;
+  reportsToUserId?: string | null;
+  jobTitle?: string;
 }
 
 interface AuthState {

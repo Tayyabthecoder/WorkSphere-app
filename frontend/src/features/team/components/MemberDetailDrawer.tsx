@@ -11,6 +11,8 @@ import {
   AlertCircle,
   Activity,
   Layers,
+  Users,
+  GitBranch,
 } from 'lucide-react';
 import { Avatar } from '../../../components/ui/Avatar';
 import { Badge } from '../../../components/ui/Badge';
@@ -52,11 +54,14 @@ export const MemberDetailDrawer: React.FC<MemberDetailDrawerProps> = ({
     totalTasks > 0 ? Math.round(((member.completedTasks || 0) / totalTasks) * 100) : 0;
 
   const roleDescriptions: Record<string, string> = {
-    superAdmin: 'Full workspace authority, tenant management, and platform billing.',
-    orgAdmin: 'Manage workspace members, organization settings, and projects.',
-    manager: 'Lead delivery squads, configure sprints, and manage tasks.',
-    member: 'Execute deliverables, track time, and participate in discussions.',
-    viewer: 'Read-only access to deliverables and documentation.',
+    superAdmin: 'Platform administrator with cross-tenant management.',
+    orgAdmin: 'Organization administrator managing users, projects, and billing.',
+    managingDirector: 'Executive leader overseeing all department managers, squads, and company goals.',
+    hr: 'People operations managing company-wide hiring, personnel records, and employee success.',
+    manager: 'Squad supervisor directing team delivery, sprint backlogs, and team members.',
+    teamLeader: 'Operational squad lead; guides sprint tasks, collaborates with teammates, and reviews timesheets.',
+    member: 'Core team contributor delivering tasks and collaborating on sprints.',
+    viewer: 'Read-only stakeholder access.',
   };
 
   return (
@@ -87,6 +92,9 @@ export const MemberDetailDrawer: React.FC<MemberDetailDrawerProps> = ({
                     </span>
                   )}
                 </div>
+                {member.jobTitle && (
+                  <span className="text-xs font-medium text-brand-emerald">{member.jobTitle}</span>
+                )}
                 <span className="text-xs text-text-secondary">{member.email}</span>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant={member.isActive ? 'completed' : 'neutral'} size="sm" dot>
@@ -138,10 +146,40 @@ export const MemberDetailDrawer: React.FC<MemberDetailDrawerProps> = ({
             {/* Profile Information */}
             <div className="space-y-3">
               <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider font-mono text-text-muted">
-                Profile Information
+                Profile & Squad Hierarchy
               </h4>
 
               <div className="space-y-2 bg-surface-low p-3.5 rounded-xl border border-border">
+                <div className="flex items-center justify-between py-1 border-b border-border/60">
+                  <span className="text-text-muted flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" /> Assigned Squad
+                  </span>
+                  <span className="font-semibold text-text-primary flex items-center gap-1.5">
+                    {member.team ? (
+                      <>
+                        <span
+                          className="w-2 h-2 rounded-full inline-block"
+                          style={{ backgroundColor: member.team.colorLabel || '#0D9488' }}
+                        />
+                        <span>{member.team.name}</span>
+                      </>
+                    ) : (
+                      <span className="text-text-muted font-normal">(Unassigned)</span>
+                    )}
+                  </span>
+                </div>
+
+                {member.reportsToUser && (
+                  <div className="flex items-center justify-between py-1 border-b border-border/60">
+                    <span className="text-text-muted flex items-center gap-1.5">
+                      <GitBranch className="w-3.5 h-3.5" /> Reports To
+                    </span>
+                    <span className="font-medium text-text-primary">
+                      {member.reportsToUser.name} ({member.reportsToUser.jobTitle || member.reportsToUser.role})
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between py-1 border-b border-border/60">
                   <span className="text-text-muted flex items-center gap-1.5">
                     <Building className="w-3.5 h-3.5" /> Department

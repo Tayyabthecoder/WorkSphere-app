@@ -17,3 +17,4 @@ export * from './EmailTemplate';
 export * from './Comment';
 export * from './AutomationRule';
 export * from './Invitation';
+export * from './Team';

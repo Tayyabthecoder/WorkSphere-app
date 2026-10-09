@@ -24,6 +24,7 @@ const prefixes = {
   comment: 'cmt',
   inv: 'inv',
   invitation: 'inv',
+  team: 'team',
 } as const;
 
 export type IdPrefix = keyof typeof prefixes;
