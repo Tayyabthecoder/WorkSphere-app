@@ -7,7 +7,15 @@ import RoleRouteGuard from './components/layout/RoleRouteGuard';
 import PageLoader from './components/ui/PageLoader';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 
-// Public Pages (Lazy Loaded)
+// Public Marketing Pages (Lazy Loaded)
+const HomePage = lazy(() => import('./pages/marketing/HomePage'));
+const ServicesPage = lazy(() => import('./pages/marketing/ServicesPage'));
+const AboutPage = lazy(() => import('./pages/marketing/AboutPage'));
+const PricingPage = lazy(() => import('./pages/marketing/PricingPage'));
+const BlogPage = lazy(() => import('./pages/marketing/BlogPage'));
+const ContactPage = lazy(() => import('./pages/marketing/ContactPage'));
+
+// Public Authentication & Onboarding Pages (Lazy Loaded)
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const WorkspaceOnboardingPage = lazy(() => import('./pages/WorkspaceOnboardingPage'));
@@ -50,6 +58,14 @@ export const App: React.FC = () => {
     <ErrorBoundary fallbackTitle="Application Error">
       <Suspense fallback={<PageLoader />}>
         <Routes>
+          {/* Public Marketing Routes */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/services" element={<ServicesPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+
           {/* Public Authentication & Onboarding Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -60,7 +76,6 @@ export const App: React.FC = () => {
 
           {/* Authenticated Workspace Routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/activity" element={<ActivityFeedPage />} />
             <Route path="/projects" element={<ProjectsPage />} />

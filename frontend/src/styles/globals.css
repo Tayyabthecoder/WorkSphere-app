@@ -174,3 +174,281 @@ body {
     box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 8px 24px -6px var(--brand-glow, rgba(27, 77, 62, 0.35));
   }
 }
+
+/* ==========================================================================
+   Leadership 3D Coverflow Perspective Carousel (Blogora Inspired)
+   ========================================================================== */
+.team-carousel-wrapper {
+  position: relative;
+  max-width: 1140px;
+  margin: 20px auto 0;
+  padding: 10px 0 20px;
+  width: 100%;
+}
+
+.team-3d-stage {
+  position: relative;
+  width: 100%;
+  height: 510px;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.team-3d-card {
+  position: absolute;
+  width: 320px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 28px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 3D Coverflow Positional Classes (Strict 3-Card Display) */
+.team-3d-card.pos-center {
+  transform: translateX(0) translateZ(100px) rotateY(0deg) scale(1.06);
+  opacity: 1;
+  z-index: 10;
+  box-shadow: 0 25px 65px rgba(0, 108, 75, 0.22), 0 0 35px rgba(16, 185, 129, 0.18);
+  border-color: rgba(0, 108, 75, 0.4);
+  pointer-events: auto;
+}
+
+.team-3d-card.pos-left {
+  transform: translateX(-340px) translateZ(-60px) rotateY(-22deg) scale(0.88);
+  opacity: 0.82;
+  z-index: 5;
+  pointer-events: auto;
+}
+
+.team-3d-card.pos-right {
+  transform: translateX(340px) translateZ(-60px) rotateY(22deg) scale(0.88);
+  opacity: 0.82;
+  z-index: 5;
+  pointer-events: auto;
+}
+
+.team-3d-card.pos-far-left,
+.team-3d-card.pos-far-right {
+  transform: translateX(0) translateZ(-250px) scale(0.6);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Controls Bar & Side Navigation Buttons */
+.team-carousel-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.team-dots-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.team-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(0, 108, 75, 0.25);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.team-dot.active {
+  width: 28px;
+  border-radius: 99px;
+  background: linear-gradient(135deg, #003629 0%, #006C4B 100%);
+  box-shadow: 0 4px 12px rgba(0, 108, 75, 0.35);
+}
+
+.team-nav-btn {
+  position: absolute;
+  top: 45%;
+  transform: translateY(-50%);
+  z-index: 25;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #003629 0%, #006C4B 100%);
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(0, 108, 75, 0.35);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.team-prev-btn {
+  left: 10px;
+}
+
+.team-next-btn {
+  right: 10px;
+}
+
+.team-nav-btn:hover {
+  transform: translateY(-50%) scale(1.12);
+  box-shadow: 0 14px 32px rgba(0, 108, 75, 0.5);
+}
+
+.team-nav-btn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+/* Card Interior Elements */
+.team-card-banner {
+  height: 90px;
+  position: relative;
+}
+
+.team-avatar-wrapper {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  margin: -44px auto 14px;
+  z-index: 2;
+}
+
+.team-avatar-box {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  border: 4px solid #ffffff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease;
+  overflow: hidden;
+}
+
+.team-3d-card:hover .team-avatar-box {
+  transform: scale(1.08);
+}
+
+.status-dot {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  background-color: #22c55e;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+}
+
+.team-card-body {
+  padding: 0 24px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.team-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.team-role-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #006C4B;
+  background: rgba(0, 108, 75, 0.1);
+  padding: 4px 14px;
+  border-radius: 20px;
+  margin: 4px auto 8px;
+}
+
+.team-location {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.team-bio {
+  font-size: 0.85rem;
+  color: #64748b;
+  line-height: 1.55;
+  margin-bottom: 16px;
+  flex-grow: 1;
+}
+
+.team-socials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.team-social-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.04);
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.88rem;
+  transition: all 0.25s ease;
+  text-decoration: none;
+}
+
+.team-social-btn:hover {
+  background: linear-gradient(135deg, #003629 0%, #006C4B 100%);
+  color: #ffffff;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(0, 108, 75, 0.3);
+}
+
+@media (max-width: 992px) {
+  .team-3d-stage { height: 490px; }
+  .team-3d-card { width: 290px; }
+  .team-3d-card.pos-left { transform: translateX(-240px) translateZ(-50px) rotateY(-18deg) scale(0.85); }
+  .team-3d-card.pos-right { transform: translateX(240px) translateZ(-50px) rotateY(18deg) scale(0.85); }
+}
+
+@media (max-width: 640px) {
+  .team-3d-stage { height: 470px; }
+  .team-3d-card { width: 270px; }
+  .team-3d-card.pos-left { transform: translateX(-120px) translateZ(-40px) rotateY(-15deg) scale(0.8); opacity: 0.55; }
+  .team-3d-card.pos-right { transform: translateX(120px) translateZ(-40px) rotateY(15deg) scale(0.8); opacity: 0.55; }
+}
+
