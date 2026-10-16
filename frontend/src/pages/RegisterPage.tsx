@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Sparkles,
   ArrowRight,
@@ -21,6 +21,8 @@ import apiClient from '../api/client';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const plan = searchParams.get('plan');
   const { user, isAuthenticated, setAuth } = useAuthStore();
 
   const [name, setName] = useState('');
@@ -129,6 +131,20 @@ export const RegisterPage: React.FC = () => {
 
         {/* Card */}
         <Card className="shadow-lg border border-border-subtle p-6 sm:p-8">
+          {/* Free Early Access Notice */}
+          <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200/90 text-emerald-950 text-xs flex items-start gap-2.5">
+            <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold text-slate-900">WorkSphere is 100% Free For Now!</span>
+              <p className="text-emerald-900 text-[11px] mt-0.5 leading-relaxed">
+                {plan ? (
+                  <>You selected the <strong className="font-semibold capitalize text-emerald-950">{plan}</strong> tier. </>
+                ) : null}
+                All Pro & Enterprise features are currently unlocked for all teams at zero cost. No credit card required.
+              </p>
+            </div>
+          </div>
+
           {errorMessage && (
             <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200 text-status-error text-xs flex items-center gap-2 animate-fade-in">
               <AlertCircle className="w-4 h-4 shrink-0" />

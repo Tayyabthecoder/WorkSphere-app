@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import MarketingLayout from '../../components/marketing/MarketingLayout';
 import {
   CheckCircle2,
@@ -7,13 +7,13 @@ import {
   ArrowRight,
   ShieldCheck,
   ChevronDown,
-  Zap,
   Building2,
   Clock,
   Layers,
   Lock,
   Minus,
-  Check
+  Check,
+  X
 } from 'lucide-react';
 
 interface PricingTier {
@@ -49,12 +49,12 @@ const pricingTiers: PricingTier[] = [
       'Community & standard email support'
     ],
     ctaText: 'Start Free in 2 Mins',
-    ctaLink: '/register'
+    ctaLink: '/register?plan=starter'
   },
   {
     id: 'pro',
     name: 'Pro Edition',
-    badge: 'Most Popular',
+    badge: 'Free for Now',
     highlighted: true,
     priceMonthly: 12,
     priceAnnual: 10,
@@ -68,13 +68,13 @@ const pricingTiers: PricingTier[] = [
       '100 GB encrypted document storage',
       'Priority SLA support (< 2-hour response)'
     ],
-    ctaText: 'Get Started with Pro',
+    ctaText: 'Get Started Free (Pro)',
     ctaLink: '/register?plan=pro'
   },
   {
     id: 'enterprise',
     name: 'Enterprise Tier',
-    badge: 'Custom Architecture',
+    badge: 'Free for Now',
     highlighted: false,
     priceMonthly: 0,
     priceAnnual: 0,
@@ -88,8 +88,8 @@ const pricingTiers: PricingTier[] = [
       'Self-hosted on-premise Docker deployment option',
       'Dedicated Technical Account Manager & 24/7 hotline'
     ],
-    ctaText: 'Contact Enterprise Team',
-    ctaLink: '/contact?inquiry=enterprise'
+    ctaText: 'Access Free (Enterprise)',
+    ctaLink: '/register?plan=enterprise'
   }
 ];
 
@@ -164,7 +164,7 @@ interface CompetitorComparisonRow {
 const competitorComparison: CompetitorComparisonRow[] = [
   {
     feature: 'Starting Plan',
-    worksphere: '$0 Free Forever (Unlimited projects)',
+    worksphere: '$0 Free Forever (All tiers free for now)',
     jira: 'Freemium (Max 10 users)',
     asana: 'Freemium (Limited features)',
     monday: 'Freemium (Max 2 users)',
@@ -237,6 +237,10 @@ interface FaqItem {
 
 const faqs: FaqItem[] = [
   {
+    question: 'Is WorkSphere really free for now?',
+    answer: 'Yes! During our public launch, WorkSphere is completely free of charge for all teams. You get unrestricted access to all features (including Pro and Enterprise capabilities) with no credit card required and no automatic billing.'
+  },
+  {
     question: 'Do I need a credit card to get started with the Starter edition?',
     answer: 'No. You can create your dedicated workspace and start executing sprints immediately with zero payment details. The Community Starter edition is free forever.'
   },
@@ -263,11 +267,17 @@ const faqs: FaqItem[] = [
 ];
 
 export const PricingPage: React.FC = () => {
+  const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const [selectedTierForFreeNotice, setSelectedTierForFreeNotice] = useState<PricingTier | null>(null);
 
   const toggleFaq = (idx: number) => {
     setOpenFaqIndex(openFaqIndex === idx ? null : idx);
+  };
+
+  const handlePlanClick = (tier: PricingTier) => {
+    setSelectedTierForFreeNotice(tier);
   };
 
   return (
@@ -280,31 +290,31 @@ export const PricingPage: React.FC = () => {
             
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#006C4B]">
               <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Transparent & Predictable Pricing</span>
+              <span>Public Launch • 100% Free For Now</span>
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold text-slate-900 tracking-[-0.035em] leading-[1.1]">
               Enterprise project power. <br className="hidden sm:inline" />
-              Zero hidden feature tax.
+              Free for all teams for now.
             </h1>
 
             <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-              Consolidate your entire product and agency workflow on a single high-performance MERN engine. No surprise seat limits, no forced upgrades for core tools.
+              Consolidate your entire product and agency workflow on a single high-performance MERN engine. WorkSphere is currently 100% free during our public launch—unlock all Pro and Enterprise features with zero fees.
             </p>
 
             {/* Trust Strip */}
             <div className="pt-2 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 font-medium">
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                100% Free For Now
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 No Credit Card Required
               </span>
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                Cancel Anytime
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                100% Tenant Isolation
+                All Features Unlocked
               </span>
             </div>
 
@@ -314,6 +324,35 @@ export const PricingPage: React.FC = () => {
         {/* 2. Pricing Tiers Cards Section */}
         <section className="py-14 md:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
           
+          {/* Prominent Early Access Banner */}
+          <div className="max-w-4xl mx-auto p-4 sm:p-5 rounded-2xl bg-emerald-50/90 border border-emerald-200/90 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs text-center sm:text-left">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-emerald-700" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 justify-center sm:justify-start">
+                  <span className="font-bold text-slate-900 text-sm sm:text-base">
+                    Platform is Free for Now!
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-emerald-200 text-emerald-900">
+                    Early Access
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Looking to purchase a plan? All tiers and features are currently free for all teams. No credit card or billing required.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handlePlanClick(pricingTiers[1])}
+              className="shrink-0 px-4 py-2.5 rounded-xl bg-[#003629] text-white text-xs font-bold hover:bg-[#004D3A] transition-colors cursor-pointer shadow-xs"
+            >
+              See Free Details
+            </button>
+          </div>
+
           {/* Billing Interval Toggle (In Pricing Section) */}
           <div className="flex items-center justify-center">
             <div className="inline-flex items-center p-1.5 rounded-full bg-white border border-slate-200/90 shadow-2xs">
@@ -355,7 +394,7 @@ export const PricingPage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
             
             {pricingTiers.map((tier) => {
-              const displayPrice = tier.id === 'enterprise' 
+              const displayRegularPrice = tier.id === 'enterprise' 
                 ? 'Custom' 
                 : tier.id === 'starter' 
                   ? '$0' 
@@ -379,7 +418,7 @@ export const PricingPage: React.FC = () => {
                         className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-2xs ${
                           tier.highlighted
                             ? 'bg-[#003629] text-[#64F9BC] border border-emerald-600/40'
-                            : 'bg-slate-100 text-slate-700 border border-slate-200'
+                            : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
                         }`}
                       >
                         {tier.highlighted && <Sparkles className="w-3 h-3 text-[#64F9BC]" />}
@@ -402,17 +441,20 @@ export const PricingPage: React.FC = () => {
                     <div className="pt-2 pb-4 border-b border-slate-100">
                       <div className="flex items-baseline gap-2">
                         <span className="text-4xl sm:text-5xl font-display font-extrabold text-slate-900 tracking-tight">
-                          {displayPrice}
+                          $0
                         </span>
-                        {tier.id !== 'enterprise' && (
-                          <span className="text-xs text-slate-500 font-medium">
-                            {tier.priceSuffix}
+                        {tier.id === 'pro' && (
+                          <span className="text-sm text-slate-400 line-through font-medium">
+                            {displayRegularPrice}
                           </span>
                         )}
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-[#006C4B]">
+                          {tier.id === 'starter' ? 'Free forever' : 'Free for now'}
+                        </span>
                       </div>
-                      {tier.id === 'pro' && billingCycle === 'annual' && (
+                      {tier.id === 'pro' && (
                         <p className="text-[11px] font-semibold text-emerald-700 mt-1">
-                          Billed annually ($120/yr). Save $24 per seat.
+                          Full Pro features unlocked at zero cost during public launch.
                         </p>
                       )}
                       {tier.id === 'starter' && (
@@ -421,8 +463,8 @@ export const PricingPage: React.FC = () => {
                         </p>
                       )}
                       {tier.id === 'enterprise' && (
-                        <p className="text-[11px] font-semibold text-slate-500 mt-1">
-                          Tailored contract for large-scale operations.
+                        <p className="text-[11px] font-semibold text-emerald-700 mt-1">
+                          Full enterprise capabilities unlocked with zero contract.
                         </p>
                       )}
                     </div>
@@ -443,11 +485,12 @@ export const PricingPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Action CTA */}
+                  {/* Action CTA Button */}
                   <div className="pt-8 mt-6 border-t border-slate-100">
-                    <Link
-                      to={tier.ctaLink}
-                      className={`w-full py-3.5 px-5 rounded-full font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 active:scale-95 ${
+                    <button
+                      type="button"
+                      onClick={() => handlePlanClick(tier)}
+                      className={`w-full py-3.5 px-5 rounded-full font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
                         tier.highlighted
                           ? 'bg-[#003629] hover:bg-[#1B4D3E] text-white shadow-sm hover:scale-[1.02]'
                           : 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-200/90 shadow-2xs hover:border-slate-300'
@@ -455,7 +498,7 @@ export const PricingPage: React.FC = () => {
                     >
                       <span>{tier.ctaText}</span>
                       <ArrowRight className={`w-4 h-4 ${tier.highlighted ? 'text-[#64F9BC]' : 'text-slate-400'}`} />
-                    </Link>
+                    </button>
                   </div>
 
                 </div>
@@ -485,9 +528,9 @@ export const PricingPage: React.FC = () => {
             {/* Table Header */}
             <div className="grid grid-cols-12 bg-slate-50/80 border-b border-slate-200/80 px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">
               <div className="col-span-6 sm:col-span-5">Features</div>
-              <div className="col-span-2 sm:col-span-2 text-center">Starter</div>
-              <div className="col-span-2 sm:col-span-3 text-center text-[#006C4B]">Pro</div>
-              <div className="col-span-2 sm:col-span-2 text-center">Enterprise</div>
+              <div className="col-span-2 sm:col-span-2 text-center">Starter (Free)</div>
+              <div className="col-span-2 sm:col-span-3 text-center text-[#006C4B]">Pro (Free for now)</div>
+              <div className="col-span-2 sm:col-span-2 text-center">Enterprise (Free for now)</div>
             </div>
 
             {/* Table Categories & Items */}
@@ -554,7 +597,6 @@ export const PricingPage: React.FC = () => {
                               <span className="text-xs font-semibold">{row.enterprise}</span>
                             )}
                           </div>
-
                         </div>
                       ))}
                     </div>
@@ -564,38 +606,51 @@ export const PricingPage: React.FC = () => {
               })}
             </div>
 
+            {/* Table Footer */}
+            <div className="bg-[#FAFBF9] px-6 py-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+              <span className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                All tiers include 256-bit AES encryption & isolated tenant namespaces
+              </span>
+              <button
+                type="button"
+                onClick={() => handlePlanClick(pricingTiers[1])}
+                className="text-[#006C4B] font-bold hover:underline cursor-pointer"
+              >
+                Claim Free Pro Access &rarr;
+              </button>
+            </div>
+
           </div>
         </section>
 
-        {/* 4. Competitor Market Comparison Table */}
+        {/* 4. Competitor Comparison Section */}
         <section className="py-16 md:py-24 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 border-t border-slate-200/80">
           <div className="text-center max-w-2xl mx-auto space-y-3">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#006C4B]">
-              Market Comparison
+            <span className="text-xs uppercase font-bold tracking-widest text-[#006C4B]">
+              Market Value & Total Cost of Ownership
             </span>
             <h2 className="text-3xl sm:text-4xl font-display font-extrabold text-slate-900 tracking-[-0.03em] leading-tight">
               WorkSphere vs. Legacy Tools
             </h2>
             <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-              See how WorkSphere delivers superior speed, multi-tenant privacy, and modern engineering ergonomics compared to traditional incumbents.
+              Why high-velocity teams choose WorkSphere over bloated, fragmented point solutions with punitive per-seat licensing.
             </p>
           </div>
 
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[760px]">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/90 border-b border-slate-200/80 text-xs font-bold uppercase tracking-wider text-slate-600">
-                    <th className="py-4 px-6 w-2/5">Capabilities &amp; Architecture</th>
-                    <th className="py-4 px-6 w-1/4 bg-emerald-50/80 border-x border-emerald-200/80 text-emerald-950">
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-slate-900">WorkSphere</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 normal-case tracking-normal">
-                          Modern Standard
-                        </span>
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-xs font-bold uppercase tracking-wider">
+                    <th className="py-4 px-6 text-slate-500">Feature / Capability</th>
+                    <th className="py-4 px-6 text-[#003629] bg-emerald-100/60 font-extrabold border-x border-emerald-300/60">
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-[#006C4B]" />
+                        <span>WorkSphere</span>
                       </div>
                     </th>
-                    <th className="py-4 px-5 text-center text-slate-500 font-semibold">Atlassian Jira</th>
+                    <th className="py-4 px-5 text-center text-slate-500 font-semibold">Jira</th>
                     <th className="py-4 px-5 text-center text-slate-500 font-semibold">Asana</th>
                     <th className="py-4 px-5 text-center text-slate-500 font-semibold">Monday.com</th>
                   </tr>
@@ -738,7 +793,120 @@ export const PricingPage: React.FC = () => {
 
           </div>
         </section>
+
       </div>
+
+      {/* 6. "Platform is Free for Now" Modal Dialog */}
+      {selectedTierForFreeNotice && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in"
+          onClick={() => setSelectedTierForFreeNotice(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 border border-slate-200 shadow-2xl space-y-6 relative animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setSelectedTierForFreeNotice(null)}
+              className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              aria-label="Close dialog"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header Badge & Title */}
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Early Access • 100% Free Public Launch</span>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-display font-extrabold text-slate-900 tracking-tight">
+                WorkSphere is Free For Now!
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                You selected the <strong className="text-slate-900">{selectedTierForFreeNotice.name}</strong>. Great news! During our public launch, the entire platform is completely free to use—no purchase, credit card, or payment details required.
+              </p>
+            </div>
+
+            {/* Plan Card Callout */}
+            <div className="p-4 rounded-2xl bg-[#FAFBF9] border border-slate-200/80 flex items-center justify-between">
+              <div className="space-y-0.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                  Selected Tier
+                </span>
+                <div className="text-sm font-bold text-slate-900">
+                  {selectedTierForFreeNotice.name}
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  {selectedTierForFreeNotice.description}
+                </div>
+              </div>
+              <div className="text-right shrink-0 pl-3">
+                <div className="text-lg font-black text-[#006C4B]">$0 / Free</div>
+                {selectedTierForFreeNotice.id === 'pro' && (
+                  <div className="text-[10px] text-slate-400 line-through">
+                    Normally $12/user
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Unlocked Benefits list */}
+            <div className="space-y-2.5">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                What you get at zero cost:
+              </p>
+              <ul className="space-y-2 text-xs sm:text-sm text-slate-700">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong>Full feature access:</strong> Kanban boards, Gantt timelines, Sprints & Backlogs.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong>External Client Portal:</strong> Share real-time deliverables with zero seat fees.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong>Timesheet & Budget Tracking:</strong> Track billables, burn rates, and project margins.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong>No Payment Required:</strong> Instant setup with no credit card or invoice commitments.</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-2 flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const targetPlan = selectedTierForFreeNotice.id;
+                  setSelectedTierForFreeNotice(null);
+                  navigate(`/register?plan=${targetPlan}`);
+                }}
+                className="flex-1 py-3 px-5 rounded-xl bg-[#003629] hover:bg-[#004D3A] text-white font-bold text-xs sm:text-sm text-center shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Claim Free Access & Register</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedTierForFreeNotice(null)}
+                className="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm transition-colors cursor-pointer"
+              >
+                Back to Plans
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </MarketingLayout>
   );
 };

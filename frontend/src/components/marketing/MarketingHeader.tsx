@@ -19,7 +19,7 @@ const navItems: NavItem[] = [
   { label: 'Home', href: '/' },
   { label: 'Services', href: '/services' },
   { label: 'About Us', href: '/about' },
-  { label: 'Pricing', href: '/pricing' },
+  { label: 'Pricing', href: '/pricing', badge: 'Free' },
   { label: 'Blogs', href: '/blog' },
   { label: 'Contact Us', href: '/contact' },
 ];
