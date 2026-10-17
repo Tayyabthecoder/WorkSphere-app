@@ -14,6 +14,9 @@ const AboutPage = lazy(() => import('./pages/marketing/AboutPage'));
 const PricingPage = lazy(() => import('./pages/marketing/PricingPage'));
 const BlogPage = lazy(() => import('./pages/marketing/BlogPage'));
 const ContactPage = lazy(() => import('./pages/marketing/ContactPage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/marketing/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('./pages/marketing/TermsOfServicePage'));
+const CookiePolicyPage = lazy(() => import('./pages/marketing/CookiePolicyPage'));
 
 // Public Authentication & Onboarding Pages (Lazy Loaded)
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -65,6 +68,12 @@ export const App: React.FC = () => {
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+          <Route path="/cookies" element={<CookiePolicyPage />} />
+          <Route path="/cookie-policy" element={<CookiePolicyPage />} />
 
           {/* Public Authentication & Onboarding Routes */}
           <Route path="/login" element={<LoginPage />} />

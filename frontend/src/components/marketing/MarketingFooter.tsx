@@ -170,17 +170,17 @@ export const MarketingFooter: React.FC = () => {
             </h4>
             <ul className="space-y-2.5 text-sm font-medium">
               <li>
-                <Link to="/about#privacy" className="text-slate-600 hover:text-[#006C4B] transition-colors">
+                <Link to="/privacy" className="text-slate-600 hover:text-[#006C4B] transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link to="/about#terms" className="text-slate-600 hover:text-[#006C4B] transition-colors">
+                <Link to="/terms" className="text-slate-600 hover:text-[#006C4B] transition-colors">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link to="/about#cookies" className="text-slate-600 hover:text-[#006C4B] transition-colors">
+                <Link to="/cookies" className="text-slate-600 hover:text-[#006C4B] transition-colors">
                   Cookie Policy
                 </Link>
               </li>

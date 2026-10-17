@@ -264,6 +264,19 @@ export const RegisterPage: React.FC = () => {
             Sign In here
           </Link>
         </p>
+
+        {/* Legal Terms Note */}
+        <p className="text-center text-[11px] text-text-muted mt-3">
+          By signing up, you agree to our{' '}
+          <Link to="/terms" className="underline hover:text-text-primary">
+            Terms of Service
+          </Link>{' '}
+          and{' '}
+          <Link to="/privacy" className="underline hover:text-text-primary">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );
