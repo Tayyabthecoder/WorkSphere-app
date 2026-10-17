@@ -253,9 +253,16 @@ export const AuditLogExplorerView: React.FC = () => {
                       {log.userId}
                     </td>
                     <td className="py-3 px-3">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/20">
-                        {log.action}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/20">
+                          {log.action}
+                        </span>
+                        {(log.metadata?.impersonatedBy || (log as any).impersonatedBy) && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500/10 text-amber-700 border border-amber-300">
+                            IMPERSONATED
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-3 text-text-secondary">
                       <span className="font-semibold text-text-primary">{log.entityType}</span>

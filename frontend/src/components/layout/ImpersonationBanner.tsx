@@ -38,9 +38,26 @@ export const ImpersonationBanner: React.FC = () => {
   const handleEndSession = async () => {
     try {
       setIsEnding(true);
-      await apiClient.post('/admin/impersonate/end').catch(() => {});
+      const res = await apiClient.post('/v1/admin/impersonate/end').catch(() => null);
+
+      if (res?.data?.success && res.data.data?.accessToken && res.data.data?.user) {
+        useAuthStore.getState().setAuth(res.data.data.user, res.data.data.accessToken);
+      } else {
+        const backupToken = sessionStorage.getItem('superadmin_backup_token');
+        const backupUserRaw = sessionStorage.getItem('superadmin_backup_user');
+        if (backupToken && backupUserRaw) {
+          try {
+            const backupUser = JSON.parse(backupUserRaw);
+            useAuthStore.getState().setAuth(backupUser, backupToken);
+          } catch {
+            // fallback
+          }
+        }
+      }
     } finally {
       sessionStorage.removeItem('active_impersonation_token');
+      sessionStorage.removeItem('superadmin_backup_token');
+      sessionStorage.removeItem('superadmin_backup_user');
       setToken(null);
       setIsEnding(false);
       navigate('/admin');

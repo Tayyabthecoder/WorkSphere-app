@@ -155,6 +155,12 @@ export const PlatformHealthView: React.FC = () => {
                 {health?.memory?.rssMB ? `${health.memory.rssMB} MB` : isLoading ? '...' : '—'}
               </span>
             </div>
+            <div className="flex items-center justify-between pb-2 border-b border-border/60">
+              <span className="text-text-muted">Database Storage Size</span>
+              <span className="font-mono text-brand-emerald font-semibold">
+                {health?.database?.dataFormatted || health?.database?.storageFormatted || (isLoading ? 'Detecting...' : '—')}
+              </span>
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-text-muted">Report Timestamp</span>
               <span className="font-mono text-[11px] text-text-muted">

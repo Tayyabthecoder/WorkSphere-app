@@ -170,6 +170,11 @@ export const App: React.FC = () => {
             {/* Admin Hub Routes */}
             <Route element={<RoleRouteGuard allowedRoles={['superAdmin']} />}>
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin/tenants/:tenantId" element={<AdminPage />} />
+              <Route path="/admin/analytics" element={<AdminPage />} />
+              <Route path="/admin/users" element={<AdminPage />} />
+              <Route path="/admin/config" element={<AdminPage />} />
+              <Route path="/admin/roster" element={<AdminPage />} />
               <Route path="/admin/audit" element={<AdminPage />} />
               <Route path="/admin/security" element={<AdminPage />} />
               <Route path="/admin/retention" element={<AdminPage />} />

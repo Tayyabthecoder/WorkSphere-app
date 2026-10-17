@@ -14,6 +14,8 @@ export interface AuthenticatedUser {
   tenantId: string;
   role: UserRole;
   impersonated?: boolean;
+  impersonatedBy?: string;
+  impersonationSessionId?: string;
 }
 
 declare global {
@@ -43,6 +45,8 @@ export function verifyAuth(req: Request, res: Response, next: NextFunction) {
       tenantId: decoded.tenantId,
       role: decoded.role,
       impersonated: !!decoded.impersonated,
+      impersonatedBy: decoded.impersonatedBy,
+      impersonationSessionId: decoded.impersonationSessionId,
     };
     next();
   } catch (err: any) {

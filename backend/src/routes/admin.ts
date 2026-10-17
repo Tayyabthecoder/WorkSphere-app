@@ -1,23 +1,43 @@
 import { Router, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+export function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
 import { TenantModel } from '../models/Tenant.js';
 import { UserModel } from '../models/User.js';
 import { ProjectModel } from '../models/Project.js';
 import { TaskModel } from '../models/Task.js';
 import { ActivityLogModel } from '../models/ActivityLog.js';
 import { EmailTemplateModel } from '../models/EmailTemplate.js';
+import { FileModel } from '../models/File.js';
+import { TimeEntryModel } from '../models/TimeEntry.js';
+import { CommentModel } from '../models/Comment.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
 import { verifyAuth } from '../middleware/auth.js';
 import { assertPermission } from '../middleware/rbac.js';
 import { generateId } from '../utils/id.js';
 import { CURRENCY_SYMBOLS, getCurrencyForCountry } from '../utils/currency.js';
+import { ENV } from '../config/env.js';
 
 const router = Router();
 router.use(verifyAuth);
 
-// Guard: superAdmin only
+// Guard: superAdmin only (exempting active impersonation exit)
 router.use((req: Request, res: Response, next) => {
   try {
+    if (req.path === '/impersonate/end' || req.path === '/impersonate/exit') {
+      if (req.user?.impersonated || req.user?.role === 'superAdmin') {
+        return next();
+      }
+    }
     assertPermission(req.user!.role, 'tenant:manage');
     next();
   } catch (err) {
@@ -63,7 +83,9 @@ router.get('/tenants', async (_req: Request, res: Response) => {
         name: t.name,
         slug: t.slug,
         status: t.status,
-        plan: 'Free',
+        plan: t.settings?.plan || 'Free',
+        limits: t.settings?.limits || { maxUsers: 50, maxProjects: 20, maxStorageMB: 500 },
+        billingNotes: (t.settings?.billingNotes as string) || '',
         userCount: uStats?.totalUsers || 0,
         activeUserCount: uStats?.activeUsers || 0,
         projectCount: projectMap.get(t.tenantId) || 0,
@@ -233,6 +255,7 @@ router.get('/overview', async (_req: Request, res: Response) => {
       orgAdmins,
       totalProjects,
       totalTasks,
+      fileAgg,
       recentLogs,
     ] = await Promise.all([
       TenantModel.countDocuments(),
@@ -244,10 +267,33 @@ router.get('/overview', async (_req: Request, res: Response) => {
       UserModel.countDocuments({ role: 'orgAdmin' }),
       ProjectModel.countDocuments(),
       TaskModel.countDocuments(),
+      FileModel.aggregate([
+        { $group: { _id: null, totalBytes: { $sum: '$size' }, count: { $sum: 1 } } },
+      ]),
       ActivityLogModel.find().sort({ createdAt: -1 }).limit(10).lean() as any,
     ]);
 
-    const estimatedStorageMB = Math.round((totalProjects * 25 + totalTasks * 2 + totalUsers * 5) * 1.2);
+    // Live MongoDB stats
+    let dbStorageBytes = 0;
+    let dbDataBytes = 0;
+    let dbIndexBytes = 0;
+    try {
+      if (mongoose.connection.db) {
+        const dbStats = await mongoose.connection.db.stats();
+        dbStorageBytes = Number(dbStats.storageSize) || 0;
+        dbDataBytes = Number(dbStats.dataSize) || 0;
+        dbIndexBytes = Number(dbStats.indexSize) || 0;
+      }
+    } catch (dbErr) {
+      console.warn('[Admin Overview] Failed to fetch MongoDB db.stats():', dbErr);
+    }
+
+    const fileStorageBytes = fileAgg[0]?.totalBytes || 0;
+    const fileCount = fileAgg[0]?.count || 0;
+    // Prefer physical storageSize, fallback to logical dataSize if storageSize is 0
+    const effectiveDbBytes = dbStorageBytes > 0 ? dbStorageBytes : dbDataBytes;
+    const totalStorageBytes = effectiveDbBytes + fileStorageBytes;
+    const storageMB = Math.round((totalStorageBytes / (1024 * 1024)) * 10) / 10;
 
     return sendApiResponse(res, {
       stats: {
@@ -262,7 +308,20 @@ router.get('/overview', async (_req: Request, res: Response) => {
         totalTasks,
         mrr: 0,
         arr: 0,
-        estimatedStorageMB,
+        estimatedStorageMB: storageMB > 0 ? storageMB : 1,
+        storage: {
+          totalBytes: totalStorageBytes,
+          formatted: formatBytes(totalStorageBytes),
+          dbBytes: dbStorageBytes,
+          dbFormatted: formatBytes(dbStorageBytes),
+          dbDataBytes,
+          dbDataFormatted: formatBytes(dbDataBytes),
+          dbIndexBytes,
+          dbIndexFormatted: formatBytes(dbIndexBytes),
+          filesBytes: fileStorageBytes,
+          filesCount: fileCount,
+          filesFormatted: formatBytes(fileStorageBytes),
+        },
       },
       recentLogs: recentLogs.map((log: any) => ({
         logId: log.logId,
@@ -331,6 +390,20 @@ router.get('/stats', async (_req: Request, res: Response) => {
 
     const memoryUsage = process.memoryUsage();
 
+    let dbStorageBytes = 0;
+    let dbDataBytes = 0;
+    let dbIndexBytes = 0;
+    try {
+      if (mongoose.connection.db) {
+        const dbStats = await mongoose.connection.db.stats();
+        dbStorageBytes = Number(dbStats.storageSize) || 0;
+        dbDataBytes = Number(dbStats.dataSize) || 0;
+        dbIndexBytes = Number(dbStats.indexSize) || 0;
+      }
+    } catch {
+      // ignore
+    }
+
     return sendApiResponse(res, {
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -342,6 +415,14 @@ router.get('/stats', async (_req: Request, res: Response) => {
         rssMB: Math.round(memoryUsage.rss / (1024 * 1024)),
         heapUsedMB: Math.round(memoryUsage.heapUsed / (1024 * 1024)),
         heapTotalMB: Math.round(memoryUsage.heapTotal / (1024 * 1024)),
+      },
+      database: {
+        storageBytes: dbStorageBytes,
+        storageFormatted: formatBytes(dbStorageBytes),
+        dataBytes: dbDataBytes,
+        dataFormatted: formatBytes(dbDataBytes),
+        indexBytes: dbIndexBytes,
+        indexFormatted: formatBytes(dbIndexBytes),
       },
       counts: {
         tenants: tenantCount,
@@ -461,6 +542,19 @@ const DEFAULT_SECURITY_POLICY = {
   ssoEnabled: false,
 };
 
+const DEFAULT_PLATFORM_CONFIG = {
+  maintenanceMode: false,
+  maintenanceMessage: 'WorkSphere is undergoing scheduled system maintenance. We will be back shortly.',
+  selfRegistrationEnabled: true,
+  maxFileSizeMB: 50,
+  defaultFeatureFlags: {
+    clientPortal: true,
+    capacityPlanning: true,
+    documentEditor: true,
+    workflowAutomation: false,
+  },
+};
+
 async function getOrCreatePlatformTenant() {
   let platform = await TenantModel.findOne({ tenantId: 'tnt_platform' });
   if (!platform) {
@@ -472,6 +566,7 @@ async function getOrCreatePlatformTenant() {
       settings: {
         retentionPolicy: DEFAULT_RETENTION_POLICY,
         securityPolicy: DEFAULT_SECURITY_POLICY,
+        platformConfig: DEFAULT_PLATFORM_CONFIG,
       },
     });
   }
@@ -626,6 +721,880 @@ router.patch('/security-policy', async (req: Request, res: Response) => {
     await platform.save();
 
     return sendApiResponse(res, currentPolicy);
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// ==========================================
+// 1. IMPERSONATION ENDPOINTS
+// ==========================================
+
+// POST /api/v1/admin/tenants/:tenantId/impersonate
+router.post('/tenants/:tenantId/impersonate', async (req: Request, res: Response) => {
+  try {
+    const { tenantId } = req.params;
+    const superAdmin = req.user!;
+
+    const tenant = await TenantModel.findOne({ tenantId });
+    if (!tenant) {
+      return sendApiError(res, { code: 'NOT_FOUND', message: `Tenant "${tenantId}" not found` }, 404);
+    }
+    if (tenant.status === 'archived') {
+      return sendApiError(res, { code: 'TENANT_ARCHIVED', message: 'Cannot impersonate an archived tenant' }, 400);
+    }
+
+    // Find orgAdmin or another active user in this tenant
+    let targetUser = await UserModel.findOne({ tenantId, role: 'orgAdmin', isActive: true }).lean() as any;
+    if (!targetUser) {
+      targetUser = await UserModel.findOne({ tenantId, isActive: true }).lean() as any;
+    }
+    if (!targetUser) {
+      return sendApiError(res, { code: 'NO_ACTIVE_USERS', message: 'No active user found in this workspace to impersonate' }, 400);
+    }
+
+    const sessionId = generateId('act').replace('act_', 'imp_');
+    const tokenPayload = {
+      userId: targetUser.userId,
+      id: targetUser.userId,
+      name: targetUser.name,
+      email: targetUser.email,
+      tenantId: tenant.tenantId,
+      role: targetUser.role,
+      impersonated: true,
+      impersonatedBy: superAdmin.id,
+      impersonationSessionId: sessionId,
+    };
+
+    const accessToken = jwt.sign(tokenPayload, ENV.JWT_SECRET, { expiresIn: '2h' });
+
+    // Store session info in tenant
+    if (!tenant.settings) tenant.settings = {};
+    tenant.settings.impersonationSession = {
+      token: sessionId,
+      startedByUserId: superAdmin.id,
+      expiresAt: new Date(Date.now() + 2 * 3600 * 1000),
+    };
+    tenant.markModified('settings');
+    await tenant.save();
+
+    // Log to ActivityLog with impersonatedBy
+    await ActivityLogModel.create({
+      logId: generateId('act'),
+      tenantId: tenant.tenantId,
+      userId: superAdmin.id,
+      action: 'impersonation_started',
+      entityType: 'tenant',
+      entityId: tenant.tenantId,
+      metadata: {
+        superAdminId: superAdmin.id,
+        superAdminEmail: superAdmin.email,
+        targetUserId: targetUser.userId,
+        targetUserEmail: targetUser.email,
+        tenantName: tenant.name,
+        sessionId,
+      },
+      impersonatedBy: superAdmin.id,
+      impersonationSessionId: sessionId,
+    });
+
+    return sendApiResponse(res, {
+      accessToken,
+      user: {
+        ...targetUser,
+        isImpersonated: true,
+        impersonatedBy: superAdmin.id,
+        impersonationSessionId: sessionId,
+      },
+      tenant: {
+        tenantId: tenant.tenantId,
+        name: tenant.name,
+        slug: tenant.slug,
+      },
+    });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// POST /api/v1/admin/impersonate/end (or /api/v1/admin/impersonate/exit)
+const handleExitImpersonation = async (req: Request, res: Response) => {
+  try {
+    const user = req.user!;
+    const superAdminId = user.impersonatedBy;
+
+    if (user.tenantId && user.tenantId !== 'tnt_platform') {
+      const tenant = await TenantModel.findOne({ tenantId: user.tenantId });
+      if (tenant?.settings?.impersonationSession) {
+        delete (tenant.settings as any).impersonationSession;
+        tenant.markModified('settings');
+        await tenant.save();
+      }
+    }
+
+    await ActivityLogModel.create({
+      logId: generateId('act'),
+      tenantId: user.tenantId || 'tnt_platform',
+      userId: user.id,
+      action: 'impersonation_ended',
+      entityType: 'tenant',
+      entityId: user.tenantId || 'platform',
+      metadata: {
+        superAdminId,
+        sessionId: user.impersonationSessionId,
+      },
+      impersonatedBy: superAdminId,
+      impersonationSessionId: user.impersonationSessionId,
+    });
+
+    // If superAdmin ID was stored, generate fresh superAdmin access token
+    let superAdminToken: string | null = null;
+    let superAdminUser: any = null;
+    if (superAdminId) {
+      const saUser = await UserModel.findOne({ userId: superAdminId }).lean() as any;
+      if (saUser) {
+        superAdminUser = {
+          userId: saUser.userId,
+          id: saUser.userId,
+          name: saUser.name,
+          email: saUser.email,
+          tenantId: saUser.tenantId,
+          role: saUser.role,
+        };
+        superAdminToken = jwt.sign(superAdminUser, ENV.JWT_SECRET, { expiresIn: ENV.JWT_ACCESS_EXPIRES_IN as any });
+      }
+    }
+
+    return sendApiResponse(res, {
+      message: 'Impersonation session terminated',
+      accessToken: superAdminToken,
+      user: superAdminUser,
+    });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+};
+
+router.post('/impersonate/end', handleExitImpersonation);
+router.post('/impersonate/exit', handleExitImpersonation);
+
+// ==========================================
+// 2. TENANT DEEP-DIVE ENDPOINTS
+// ==========================================
+
+// GET /api/v1/admin/tenants/:tenantId/detail
+router.get('/tenants/:tenantId/detail', async (req: Request, res: Response) => {
+  try {
+    const { tenantId } = req.params;
+    const tenant = await TenantModel.findOne({ tenantId }).lean() as any;
+    if (!tenant) {
+      return sendApiError(res, { code: 'NOT_FOUND', message: `Tenant "${tenantId}" not found` }, 404);
+    }
+
+    const [
+      totalUsers,
+      activeUsers,
+      orgAdmin,
+      projects,
+      tasks,
+      timeAgg,
+      fileAgg,
+      latestLog,
+    ] = await Promise.all([
+      UserModel.countDocuments({ tenantId }),
+      UserModel.countDocuments({ tenantId, isActive: true }),
+      UserModel.findOne({ tenantId, role: 'orgAdmin' }).select('userId name email avatarUrl department createdAt').lean(),
+      ProjectModel.find({ tenantId }).select('projectId name status methodology startDate endDate createdAt budget').lean() as any,
+      TaskModel.find({ tenantId }).select('taskId status priority dueDate sprintId projectId').lean() as any,
+      TimeEntryModel.aggregate([
+        { $match: { tenantId } },
+        { $group: { _id: null, totalMinutes: { $sum: '$duration' }, count: { $sum: 1 } } },
+      ]),
+      FileModel.aggregate([
+        { $match: { tenantId } },
+        { $group: { _id: null, totalBytes: { $sum: '$size' }, count: { $sum: 1 } } },
+      ]),
+      ActivityLogModel.findOne({ tenantId }).sort({ createdAt: -1 }).select('createdAt action userId').lean() as any,
+    ]);
+
+    // Compute task breakdown
+    const taskBreakdown = {
+      total: tasks.length,
+      done: tasks.filter((t: any) => t.status === 'Done').length,
+      inProgress: tasks.filter((t: any) => t.status === 'In Progress' || t.status === 'In Review').length,
+      toDo: tasks.filter((t: any) => t.status === 'To Do' || t.status === 'Backlog').length,
+    };
+
+    // Compute project breakdown
+    const projectBreakdown = {
+      total: projects.length,
+      active: projects.filter((p: any) => p.status === 'Active').length,
+      onHold: projects.filter((p: any) => p.status === 'On Hold').length,
+      completed: projects.filter((p: any) => p.status === 'Completed').length,
+      archived: projects.filter((p: any) => p.status === 'Archived').length,
+      byMethodology: {
+        agile: projects.filter((p: any) => p.methodology === 'Agile').length,
+        waterfall: projects.filter((p: any) => p.methodology === 'Waterfall').length,
+        hybrid: projects.filter((p: any) => p.methodology === 'Hybrid').length,
+      },
+    };
+
+    const totalHoursLogged = Math.round(((timeAgg[0]?.totalMinutes || 0) / 60) * 10) / 10;
+    const storageBytes = fileAgg[0]?.totalBytes || 0;
+    const storageMB = Math.round((storageBytes / (1024 * 1024)) * 10) / 10;
+
+    return sendApiResponse(res, {
+      tenant: {
+        tenantId: tenant.tenantId,
+        name: tenant.name,
+        slug: tenant.slug,
+        status: tenant.status,
+        plan: tenant.settings?.plan || 'Free',
+        limits: tenant.settings?.limits || { maxUsers: 50, maxProjects: 20, maxStorageMB: 500 },
+        billingNotes: tenant.settings?.billingNotes || '',
+        timezone: tenant.timezone || 'UTC',
+        language: tenant.language || 'en',
+        country: tenant.country || '',
+        currency: tenant.settings?.currency || 'USD',
+        currencySymbol: tenant.settings?.currencySymbol || '$',
+        featureFlags: tenant.settings?.featureFlags || {},
+        adminNotes: tenant.settings?.adminNotes || '',
+        adminNotesUpdatedAt: tenant.settings?.adminNotesUpdatedAt || null,
+        adminLabels: tenant.settings?.adminLabels || [],
+        createdAt: tenant.createdAt,
+        updatedAt: tenant.updatedAt,
+      },
+      admin: orgAdmin,
+      stats: {
+        totalUsers,
+        activeUsers,
+        totalProjects: projects.length,
+        projectBreakdown,
+        totalTasks: tasks.length,
+        taskBreakdown,
+        totalHoursLogged,
+        totalTimeEntries: timeAgg[0]?.count || 0,
+        totalFiles: fileAgg[0]?.count || 0,
+        storageBytes,
+        storageMB,
+        storageFormatted: formatBytes(storageBytes),
+        lastActiveAt: latestLog?.createdAt || tenant.updatedAt,
+      },
+      recentProjects: projects.slice(0, 5),
+    });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// GET /api/v1/admin/tenants/:tenantId/members
+router.get('/tenants/:tenantId/members', async (req: Request, res: Response) => {
+  try {
+    const { tenantId } = req.params;
+    const members = await UserModel.find({ tenantId })
+      .select('userId name email role department isActive avatarUrl createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return sendApiResponse(res, members);
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// GET /api/v1/admin/tenants/:tenantId/projects
+router.get('/tenants/:tenantId/projects', async (req: Request, res: Response) => {
+  try {
+    const { tenantId } = req.params;
+    const [projects, tasks] = await Promise.all([
+      ProjectModel.find({ tenantId }).sort({ createdAt: -1 }).lean() as any,
+      TaskModel.aggregate([
+        { $match: { tenantId } },
+        { $group: { _id: '$projectId', totalTasks: { $sum: 1 }, completedTasks: { $sum: { $cond: [{ $eq: ['$status', 'Done'] }, 1, 0] } } } },
+      ]),
+    ]);
+
+    const taskMap = new Map(tasks.map((t: any) => [t._id, t]));
+
+    const enrichedProjects = projects.map((p: any) => {
+      const tStat = taskMap.get(p.projectId) || { totalTasks: 0, completedTasks: 0 };
+      return {
+        projectId: p.projectId,
+        name: p.name,
+        description: p.description,
+        status: p.status,
+        methodology: p.methodology,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        memberCount: (p.members || []).length,
+        taskCount: tStat.totalTasks,
+        completedTaskCount: tStat.completedTasks,
+        budget: p.budget,
+        createdAt: p.createdAt,
+      };
+    });
+
+    return sendApiResponse(res, enrichedProjects);
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// GET /api/v1/admin/tenants/:tenantId/activity-timeline
+router.get('/tenants/:tenantId/activity-timeline', async (req: Request, res: Response) => {
+  try {
+    const { tenantId } = req.params;
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 3600 * 1000);
+
+    const timeline = await ActivityLogModel.aggregate([
+      { $match: { tenantId, createdAt: { $gte: thirtyDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    return sendApiResponse(res, timeline.map((item) => ({ date: item._id, count: item.count })));
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// DELETE /api/v1/admin/tenants/:tenantId
+router.delete('/tenants/:tenantId', async (req: Request, res: Response) => {
+  try {
+    const { tenantId } = req.params;
+    const { purge } = req.query;
+    const user = req.user!;
+
+    const tenant = await TenantModel.findOne({ tenantId });
+    if (!tenant) {
+      return sendApiError(res, { code: 'NOT_FOUND', message: `Tenant "${tenantId}" not found` }, 404);
+    }
+
+    if (tenant.tenantId === 'tnt_platform') {
+      return sendApiError(res, { code: 'FORBIDDEN', message: 'Platform root tenant cannot be deleted' }, 403);
+    }
+
+    if (purge === 'true') {
+      // Hard purge all documents associated with this tenant
+      await Promise.all([
+        TaskModel.deleteMany({ tenantId }),
+        ProjectModel.deleteMany({ tenantId }),
+        TimeEntryModel.deleteMany({ tenantId }),
+        FileModel.deleteMany({ tenantId }),
+        CommentModel.deleteMany({ tenantId }),
+        UserModel.deleteMany({ tenantId }),
+        ActivityLogModel.deleteMany({ tenantId }),
+        TenantModel.deleteOne({ tenantId }),
+      ]);
+
+      await ActivityLogModel.create({
+        logId: generateId('act'),
+        tenantId: 'tnt_platform',
+        userId: user.id,
+        action: 'deleted_tenant_purged',
+        entityType: 'tenant',
+        entityId: tenantId,
+        metadata: { tenantName: tenant.name, slug: tenant.slug, purgedBy: user.email },
+      });
+
+      return sendApiResponse(res, { message: `Tenant ${tenantId} and all associated data permanently purged.` });
+    } else {
+      // Soft-delete / Archive
+      tenant.status = 'archived';
+      tenant.updatedAt = new Date();
+      await tenant.save();
+
+      await ActivityLogModel.create({
+        logId: generateId('act'),
+        tenantId,
+        userId: user.id,
+        action: 'archived_tenant',
+        entityType: 'tenant',
+        entityId: tenantId,
+        metadata: { tenantName: tenant.name, slug: tenant.slug, archivedBy: user.email },
+      });
+
+      return sendApiResponse(res, { message: `Tenant ${tenantId} has been archived.`, tenant });
+    }
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// ==========================================
+// 3. PLAN & LIMITS MANAGEMENT
+// ==========================================
+
+// PATCH /api/v1/admin/tenants/:tenantId/plan
+router.patch('/tenants/:tenantId/plan', async (req: Request, res: Response) => {
+  try {
+    const { tenantId } = req.params;
+    const { plan, limits, billingNotes } = req.body;
+    const user = req.user!;
+
+    const tenant = await TenantModel.findOne({ tenantId });
+    if (!tenant) {
+      return sendApiError(res, { code: 'NOT_FOUND', message: `Tenant "${tenantId}" not found` }, 404);
+    }
+
+    if (!tenant.settings) tenant.settings = {};
+
+    if (plan !== undefined) tenant.settings.plan = plan;
+    if (limits !== undefined) {
+      tenant.settings.limits = {
+        ...((tenant.settings.limits as any) || {}),
+        ...limits,
+      };
+    }
+    if (billingNotes !== undefined) tenant.settings.billingNotes = billingNotes;
+
+    tenant.updatedAt = new Date();
+    tenant.markModified('settings');
+    await tenant.save();
+
+    await ActivityLogModel.create({
+      logId: generateId('act'),
+      tenantId,
+      userId: user.id,
+      action: 'updated_tenant_plan',
+      entityType: 'tenant',
+      entityId: tenantId,
+      metadata: { plan, limits, billingNotes },
+    });
+
+    return sendApiResponse(res, {
+      tenantId: tenant.tenantId,
+      plan: tenant.settings.plan,
+      limits: tenant.settings.limits,
+      billingNotes: tenant.settings.billingNotes,
+    });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// ==========================================
+// 4. GLOBAL SEARCH ENDPOINT
+// ==========================================
+
+// GET /api/v1/admin/search?q=...
+router.get('/search', async (req: Request, res: Response) => {
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    if (!q || q.length < 2) {
+      return sendApiResponse(res, { tenants: [], users: [], projects: [] });
+    }
+
+    const regex = new RegExp(q, 'i');
+
+    const [tenants, users, projects] = await Promise.all([
+      TenantModel.find({
+        $or: [{ name: regex }, { slug: regex }, { tenantId: regex }],
+      })
+        .select('tenantId name slug status settings.plan createdAt')
+        .limit(8)
+        .lean(),
+      UserModel.find({
+        $or: [{ name: regex }, { email: regex }, { userId: regex }],
+      })
+        .select('userId name email tenantId role department isActive')
+        .limit(8)
+        .lean(),
+      ProjectModel.find({
+        $or: [{ name: regex }, { projectId: regex }],
+      })
+        .select('projectId name tenantId status methodology createdAt')
+        .limit(8)
+        .lean(),
+    ]);
+
+    return sendApiResponse(res, { tenants, users, projects });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// ==========================================
+// 5. PLATFORM ANALYTICS
+// ==========================================
+
+// GET /api/v1/admin/analytics
+router.get('/analytics', async (_req: Request, res: Response) => {
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 3600 * 1000);
+
+    const [
+      tenantRegistrations,
+      activeUsersList,
+      taskStatusAgg,
+      projectMethodologyAgg,
+      topTenantsAgg,
+      allTenants,
+      recentActiveTenants,
+    ] = await Promise.all([
+      // Tenant registrations per day (30 days)
+      TenantModel.aggregate([
+        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+      // Unique active users in last 30 days
+      ActivityLogModel.distinct('userId', { createdAt: { $gte: thirtyDaysAgo } }),
+      // Task breakdown
+      TaskModel.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]),
+      // Project methodology breakdown
+      ProjectModel.aggregate([
+        { $group: { _id: '$methodology', count: { $sum: 1 } } },
+      ]),
+      // Top tenants by task deliverables
+      TaskModel.aggregate([
+        { $group: { _id: '$tenantId', taskCount: { $sum: 1 } } },
+        { $sort: { taskCount: -1 } },
+        { $limit: 10 },
+      ]),
+      // All tenants
+      TenantModel.find().select('tenantId name slug status createdAt').lean() as any,
+      // Tenants with activity in last 30d
+      ActivityLogModel.distinct('tenantId', { createdAt: { $gte: thirtyDaysAgo } }),
+    ]);
+
+    const activeTenantSet = new Set(recentActiveTenants);
+    const tenantMap = new Map(allTenants.map((t: any) => [t.tenantId, t]));
+
+    const topTenants = topTenantsAgg.map((item) => {
+      const t = tenantMap.get(item._id) as any;
+      return {
+        tenantId: item._id,
+        name: t?.name || item._id,
+        slug: t?.slug || '',
+        taskCount: item.taskCount,
+      };
+    });
+
+    const inactiveTenants = allTenants
+      .filter((t: any) => !activeTenantSet.has(t.tenantId) && t.tenantId !== 'tnt_platform')
+      .slice(0, 10);
+
+    return sendApiResponse(res, {
+      tenantRegistrations: tenantRegistrations.map((r) => ({ date: r._id, count: r.count })),
+      thirtyDayMAU: activeUsersList.length,
+      taskStatusDistribution: taskStatusAgg.map((s) => ({ status: s._id || 'Unknown', count: s.count })),
+      projectMethodologyDistribution: projectMethodologyAgg.map((m) => ({ methodology: m._id || 'Standard', count: m.count })),
+      topTenants,
+      inactiveTenants,
+    });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// ==========================================
+// 6. PLATFORM CONFIGURATION
+// ==========================================
+
+// GET /api/v1/admin/platform-config
+router.get('/platform-config', async (_req: Request, res: Response) => {
+  try {
+    const platform = await getOrCreatePlatformTenant();
+    const config = {
+      ...DEFAULT_PLATFORM_CONFIG,
+      ...((platform.settings?.platformConfig as any) || {}),
+    };
+    return sendApiResponse(res, config);
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// PATCH /api/v1/admin/platform-config
+router.patch('/platform-config', async (req: Request, res: Response) => {
+  try {
+    const body = req.body;
+    const platform = await getOrCreatePlatformTenant();
+
+    if (!platform.settings) platform.settings = {};
+
+    const currentConfig = {
+      ...DEFAULT_PLATFORM_CONFIG,
+      ...((platform.settings.platformConfig as any) || {}),
+    };
+
+    if (body.maintenanceMode !== undefined) currentConfig.maintenanceMode = Boolean(body.maintenanceMode);
+    if (body.maintenanceMessage !== undefined) currentConfig.maintenanceMessage = String(body.maintenanceMessage).trim();
+    if (body.selfRegistrationEnabled !== undefined) currentConfig.selfRegistrationEnabled = Boolean(body.selfRegistrationEnabled);
+    if (body.maxFileSizeMB !== undefined) currentConfig.maxFileSizeMB = Number(body.maxFileSizeMB) || 50;
+    if (body.defaultFeatureFlags !== undefined && typeof body.defaultFeatureFlags === 'object') {
+      currentConfig.defaultFeatureFlags = {
+        ...currentConfig.defaultFeatureFlags,
+        ...body.defaultFeatureFlags,
+      };
+    }
+
+    platform.settings.platformConfig = currentConfig;
+    platform.markModified('settings');
+    await platform.save();
+
+    await ActivityLogModel.create({
+      logId: generateId('act'),
+      tenantId: 'tnt_platform',
+      userId: req.user!.id,
+      action: 'platform_config_updated',
+      entityType: 'system',
+      entityId: 'platform_config',
+      metadata: currentConfig,
+    });
+
+    return sendApiResponse(res, currentConfig);
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// ==========================================
+// 7. CROSS-TENANT USER LOOKUP & GDPR
+// ==========================================
+
+// GET /api/v1/admin/users
+router.get('/users', async (req: Request, res: Response) => {
+  try {
+    const { q, tenantId, role, status, page = '1', limit = '25' } = req.query;
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 25));
+    const skip = (pageNum - 1) * limitNum;
+
+    const query: any = {};
+    if (tenantId && tenantId !== 'all') query.tenantId = tenantId;
+    if (role && role !== 'all') query.role = role;
+    if (status === 'active') query.isActive = true;
+    if (status === 'inactive') query.isActive = false;
+
+    if (q) {
+      const regex = new RegExp(String(q).trim(), 'i');
+      query.$or = [{ name: regex }, { email: regex }, { userId: regex }];
+    }
+
+    const [total, users, tenants] = await Promise.all([
+      UserModel.countDocuments(query),
+      UserModel.find(query)
+        .select('userId name email tenantId role department isActive avatarUrl createdAt')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      TenantModel.find().select('tenantId name slug').lean() as any,
+    ]);
+
+    const tenantMap = new Map(tenants.map((t: any) => [t.tenantId, t.name]));
+
+    const enrichedUsers = users.map((u: any) => ({
+      ...u,
+      tenantName: tenantMap.get(u.tenantId) || u.tenantId,
+    }));
+
+    return sendApiResponse(res, {
+      users: enrichedUsers,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum) || 1,
+      },
+    });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// GET /api/v1/admin/users/:userId
+router.get('/users/:userId', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const user = await UserModel.findOne({ userId }).select('-passwordHash -refreshTokenHash').lean() as any;
+    if (!user) {
+      return sendApiError(res, { code: 'NOT_FOUND', message: 'User not found' }, 404);
+    }
+
+    const [tenant, tasksCount, timeCount] = await Promise.all([
+      TenantModel.findOne({ tenantId: user.tenantId }).select('tenantId name slug status').lean(),
+      TaskModel.countDocuments({ assignees: user.userId }),
+      TimeEntryModel.countDocuments({ userId: user.userId }),
+    ]);
+
+    return sendApiResponse(res, {
+      user,
+      tenant,
+      stats: {
+        assignedTasks: tasksCount,
+        loggedTimeEntries: timeCount,
+      },
+    });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// PATCH /api/v1/admin/users/:userId/status
+router.patch('/users/:userId/status', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { isActive } = req.body;
+    const adminUser = req.user!;
+
+    if (isActive === undefined) {
+      return sendApiError(res, { code: 'VALIDATION_ERROR', message: 'isActive boolean is required' }, 400);
+    }
+
+    const user = await UserModel.findOne({ userId });
+    if (!user) {
+      return sendApiError(res, { code: 'NOT_FOUND', message: 'User not found' }, 404);
+    }
+
+    user.isActive = Boolean(isActive);
+    user.updatedAt = new Date();
+    await user.save();
+
+    await ActivityLogModel.create({
+      logId: generateId('act'),
+      tenantId: user.tenantId,
+      userId: adminUser.id,
+      action: user.isActive ? 'user_activated_by_admin' : 'user_deactivated_by_admin',
+      entityType: 'user',
+      entityId: user.userId,
+      metadata: { targetEmail: user.email, newStatus: user.isActive },
+    });
+
+    return sendApiResponse(res, { userId: user.userId, isActive: user.isActive });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// POST /api/v1/admin/users/:userId/reset-password
+router.post('/users/:userId/reset-password', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { newPassword } = req.body;
+    const adminUser = req.user!;
+
+    const user = await UserModel.findOne({ userId });
+    if (!user) {
+      return sendApiError(res, { code: 'NOT_FOUND', message: 'User not found' }, 404);
+    }
+
+    const tempPassword = newPassword?.trim() || `WsPass${Math.random().toString(36).slice(-6)}!`;
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+    user.passwordHash = passwordHash;
+    user.updatedAt = new Date();
+    await user.save();
+
+    await ActivityLogModel.create({
+      logId: generateId('act'),
+      tenantId: user.tenantId,
+      userId: adminUser.id,
+      action: 'user_password_reset_by_admin',
+      entityType: 'user',
+      entityId: user.userId,
+      metadata: { targetEmail: user.email },
+    });
+
+    return sendApiResponse(res, {
+      message: 'Password reset successful',
+      temporaryPassword: tempPassword,
+    });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// POST /api/v1/admin/users/:userId/gdpr-export
+router.post('/users/:userId/gdpr-export', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const user = await UserModel.findOne({ userId }).select('-passwordHash -refreshTokenHash').lean() as any;
+    if (!user) {
+      return sendApiError(res, { code: 'NOT_FOUND', message: 'User not found' }, 404);
+    }
+
+    const [tasks, timeEntries, comments, activity] = await Promise.all([
+      TaskModel.find({ assignees: userId }).select('taskId title status priority dueDate createdAt').lean(),
+      TimeEntryModel.find({ userId }).lean(),
+      CommentModel.find({ authorId: userId }).select('commentId content taskId createdAt').lean(),
+      ActivityLogModel.find({ userId }).sort({ createdAt: -1 }).limit(100).lean(),
+    ]);
+
+    const exportBundle = {
+      exportMetadata: {
+        exportedAt: new Date().toISOString(),
+        exportedBy: req.user!.email,
+        complianceStandard: 'GDPR Article 15 / CCPA Data Portability',
+      },
+      profile: user,
+      assignedTasks: tasks,
+      timeEntries,
+      comments,
+      recentActivity: activity,
+    };
+
+    return sendApiResponse(res, exportBundle);
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// ==========================================
+// 8. SUPER ADMIN ROSTER & PLATFORM FEED
+// ==========================================
+
+// GET /api/v1/admin/super-admins
+router.get('/super-admins', async (_req: Request, res: Response) => {
+  try {
+    const admins = await UserModel.find({ role: 'superAdmin' })
+      .select('userId name email tenantId isActive avatarUrl createdAt updatedAt')
+      .sort({ createdAt: 1 })
+      .lean();
+
+    return sendApiResponse(res, admins);
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// GET /api/v1/admin/platform-feed
+router.get('/platform-feed', async (_req: Request, res: Response) => {
+  try {
+    const PLATFORM_ACTIONS = [
+      'provisioned_tenant',
+      'updated_tenant_status',
+      'archived_tenant',
+      'deleted_tenant_purged',
+      'impersonation_started',
+      'impersonation_ended',
+      'updated_tenant_plan',
+      'platform_config_updated',
+      'user_activated_by_admin',
+      'user_deactivated_by_admin',
+      'user_password_reset_by_admin',
+    ];
+
+    const feed = await ActivityLogModel.find({ action: { $in: PLATFORM_ACTIONS } })
+      .sort({ createdAt: -1 })
+      .limit(35)
+      .lean();
+
+    return sendApiResponse(res, feed);
   } catch (error: any) {
     return sendApiError(res, error);
   }

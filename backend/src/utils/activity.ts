@@ -9,11 +9,13 @@ export interface RecordActivityParams {
   userEmail?: string;
   userAvatarUrl?: string;
   action: string;
-  entityType: 'project' | 'task' | 'sprint' | 'document' | 'timeEntry' | 'expense' | 'member' | 'comment';
+  entityType: 'project' | 'task' | 'sprint' | 'document' | 'timeEntry' | 'expense' | 'member' | 'comment' | 'tenant' | 'user' | 'system';
   entityId: string;
   projectId?: string | null;
   projectName?: string | null;
   metadata?: Record<string, unknown>;
+  impersonatedBy?: string;
+  impersonationSessionId?: string;
 }
 
 export async function recordActivity(params: RecordActivityParams): Promise<void> {
@@ -28,6 +30,8 @@ export async function recordActivity(params: RecordActivityParams): Promise<void
       entityType: params.entityType,
       entityId: params.entityId,
       metadata: params.metadata || {},
+      impersonatedBy: params.impersonatedBy || null,
+      impersonationSessionId: params.impersonationSessionId || null,
     });
 
     // Broadcast in real-time to all tenant members

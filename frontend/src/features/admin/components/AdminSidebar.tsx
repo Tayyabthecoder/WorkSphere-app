@@ -9,6 +9,10 @@ import {
   Shield,
   Lock,
   Trash2,
+  BarChart3,
+  UserCheck,
+  Settings,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface NavItem {
@@ -27,14 +31,34 @@ const NAV_ITEMS: NavItem[] = [
     exact: true,
   },
   {
+    name: 'Platform Analytics',
+    href: '/admin/analytics',
+    icon: BarChart3,
+  },
+  {
+    name: 'User Directory & GDPR',
+    href: '/admin/users',
+    icon: UserCheck,
+  },
+  {
     name: 'Audit Log Explorer',
     href: '/admin/audit',
     icon: Activity,
   },
   {
+    name: 'Operator Governance',
+    href: '/admin/roster',
+    icon: ShieldCheck,
+  },
+  {
     name: 'Security Policy',
     href: '/admin/security',
     icon: Lock,
+  },
+  {
+    name: 'System Configuration',
+    href: '/admin/config',
+    icon: Settings,
   },
   {
     name: 'Retention Policy',

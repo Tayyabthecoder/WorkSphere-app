@@ -5,10 +5,12 @@ export interface IActivityLog extends Document {
   tenantId: string;
   projectId?: string | null;
   userId: string;
-  action: string; // e.g. "created_task", "changed_status"
-  entityType: 'project' | 'task' | 'sprint' | 'document' | 'timeEntry' | 'expense' | 'member' | 'comment';
+  action: string; // e.g. "created_task", "changed_status", "impersonation_started"
+  entityType: 'project' | 'task' | 'sprint' | 'document' | 'timeEntry' | 'expense' | 'member' | 'comment' | 'tenant' | 'user' | 'system';
   entityId: string;
   metadata?: Record<string, unknown>;
+  impersonatedBy?: string;
+  impersonationSessionId?: string;
   createdAt: Date;
 }
 
@@ -22,6 +24,8 @@ const ActivityLogSchema = new Schema<IActivityLog>(
     entityType: { type: String, required: true, index: true },
     entityId: { type: String, required: true, index: true },
     metadata: { type: Schema.Types.Mixed, default: {} },
+    impersonatedBy: { type: String, default: null, index: true },
+    impersonationSessionId: { type: String, default: null, index: true },
   },
   {
     timestamps: true,

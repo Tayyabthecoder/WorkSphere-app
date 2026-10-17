@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Building2,
   Users,
@@ -16,6 +17,9 @@ import {
   SlidersHorizontal,
   FileText,
   Loader2,
+  CreditCard,
+  ShieldAlert,
+  ExternalLink,
 } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
@@ -25,9 +29,12 @@ import { Modal } from '../../../components/ui/Modal';
 import { MetricCard } from '../../../components/dashboard/MetricCard';
 import { TenantFeatureFlagsDrawer } from './TenantFeatureFlagsDrawer';
 import { TenantNotesDrawer } from './TenantNotesDrawer';
+import { TenantPlanDrawer } from './TenantPlanDrawer';
 import apiClient from '../../../api/client';
+import { useAuthStore } from '../../../store/auth';
 
 export const AdminFleetView: React.FC = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
   const [tenants, setTenants] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,6 +56,9 @@ export const AdminFleetView: React.FC = () => {
 
   // Notes Drawer State
   const [notesTenant, setNotesTenant] = useState<any | null>(null);
+
+  // Plan Drawer State
+  const [planTenant, setPlanTenant] = useState<any | null>(null);
 
   const fetchPlatformData = async () => {
     try {
@@ -85,6 +95,24 @@ export const AdminFleetView: React.FC = () => {
       );
     } catch (err) {
       console.error('Failed to toggle tenant status:', err);
+    }
+  };
+
+  const handleImpersonate = async (tenant: any) => {
+    try {
+      const currentToken = useAuthStore.getState().accessToken;
+      const currentUser = useAuthStore.getState().user;
+      const res = await apiClient.post(`/v1/admin/tenants/${tenant.tenantId}/impersonate`);
+      if (res.data?.success && res.data.data) {
+        const { accessToken, user } = res.data.data;
+        if (currentToken) sessionStorage.setItem('superadmin_backup_token', currentToken);
+        if (currentUser) sessionStorage.setItem('superadmin_backup_user', JSON.stringify(currentUser));
+        sessionStorage.setItem('active_impersonation_token', accessToken);
+        useAuthStore.getState().setAuth(user, accessToken);
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      alert(err?.response?.data?.error?.message || 'Failed to initiate impersonation session');
     }
   };
 
@@ -187,9 +215,20 @@ export const AdminFleetView: React.FC = () => {
           icon={<Briefcase className="w-4 h-4 text-purple-500" />}
         />
         <MetricCard
-          label="ESTIMATED STORAGE"
-          value={`${stats?.estimatedStorageMB ?? 120} MB`}
-          trend="Distributed"
+          label="TOTAL STORAGE"
+          value={
+            stats?.storage?.formatted ||
+            (stats?.storage?.dbDataFormatted
+              ? stats.storage.dbDataFormatted
+              : stats?.estimatedStorageMB !== undefined
+              ? `${stats.estimatedStorageMB} MB`
+              : '—')
+          }
+          trend={
+            stats?.storage
+              ? `DB: ${stats.storage.dbDataFormatted || stats.storage.dbFormatted || '0 B'} · Files: ${stats.storage.filesFormatted || '0 B'}`
+              : 'Real-time telemetry'
+          }
           icon={<Database className="w-4 h-4 text-emerald-600" />}
         />
       </div>
@@ -259,7 +298,13 @@ export const AdminFleetView: React.FC = () => {
                   <tr key={tenant.tenantId} className="hover:bg-surface-low/50 transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex flex-col">
-                        <span className="font-semibold text-text-primary">{tenant.name}</span>
+                        <Link
+                          to={`/admin/tenants/${tenant.tenantId}`}
+                          className="font-semibold text-text-primary hover:text-brand-emerald hover:underline transition-colors flex items-center gap-1 group"
+                        >
+                          <span>{tenant.name}</span>
+                          <ExternalLink className="w-3 h-3 text-brand-emerald opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Link>
                         <span className="font-mono text-[10px] text-text-muted">
                           {tenant.slug}.worksphere.app ({tenant.tenantId})
                         </span>
@@ -274,8 +319,16 @@ export const AdminFleetView: React.FC = () => {
                         {tenant.status}
                       </Badge>
                     </td>
-                    <td className="py-3 px-3 font-mono text-[11px] text-text-secondary">
-                      {tenant.plan || 'Free'}
+                    <td className="py-3 px-3">
+                      <button
+                        type="button"
+                        onClick={() => setPlanTenant(tenant)}
+                        className="font-mono text-[11px] px-2 py-0.5 rounded bg-surface-low hover:bg-surface-card text-text-primary border border-border/80 transition-colors cursor-pointer flex items-center gap-1"
+                        title="Configure plan & quotas"
+                      >
+                        <CreditCard className="w-3 h-3 text-text-muted" />
+                        <span>{tenant.plan || 'Free'}</span>
+                      </button>
                     </td>
                     <td className="py-3 px-3 font-mono text-[11px] text-text-primary">
                       {tenant.userCount} users
@@ -291,6 +344,15 @@ export const AdminFleetView: React.FC = () => {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleImpersonate(tenant)}
+                          disabled={tenant.status === 'archived'}
+                          className="p-1.5 rounded-lg text-text-muted hover:text-brand-emerald hover:bg-surface-low transition-colors cursor-pointer"
+                          title="Impersonate workspace as Platform Admin"
+                        >
+                          <ShieldAlert className="w-4 h-4 text-rose-600" />
+                        </button>
                         <button
                           type="button"
                           onClick={() => setFlagsTenant(tenant)}
@@ -349,6 +411,16 @@ export const AdminFleetView: React.FC = () => {
           tenantId={notesTenant.tenantId}
           tenantName={notesTenant.name}
           onNotesSaved={fetchPlatformData}
+        />
+      )}
+
+      {/* Plan Drawer */}
+      {planTenant && (
+        <TenantPlanDrawer
+          isOpen={!!planTenant}
+          onClose={() => setPlanTenant(null)}
+          tenant={planTenant}
+          onPlanUpdated={fetchPlatformData}
         />
       )}
 
