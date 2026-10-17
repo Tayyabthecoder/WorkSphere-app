@@ -21,6 +21,7 @@ const CookiePolicyPage = lazy(() => import('./pages/marketing/CookiePolicyPage')
 // Public Authentication & Onboarding Pages (Lazy Loaded)
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const WorkspaceOnboardingPage = lazy(() => import('./pages/WorkspaceOnboardingPage'));
 const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage'));
 
@@ -78,6 +79,7 @@ export const App: React.FC = () => {
           {/* Public Authentication & Onboarding Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/onboarding" element={<WorkspaceOnboardingPage />} />
 
           {/* External Tokenized Client Portal Route (No Auth Required) */}

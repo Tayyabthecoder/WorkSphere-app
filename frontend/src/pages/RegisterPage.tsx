@@ -1,35 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  Sparkles,
-  ArrowRight,
-  User,
-  Mail,
-  Lock,
-  AlertCircle,
-  CheckCircle2,
-  Check,
-  Eye,
-  EyeOff,
-  ShieldCheck,
-} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, User, Mail, Lock, AlertCircle, Eye, EyeOff, Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
+import { AuthLayout } from '../components/layout/AuthLayout';
 import { useAuthStore } from '../store/auth';
 import apiClient from '../api/client';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const plan = searchParams.get('plan');
   const { user, isAuthenticated, setAuth } = useAuthStore();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -45,7 +33,7 @@ export const RegisterPage: React.FC = () => {
     }
   }, [isAuthenticated, user?.tenantId, navigate]);
 
-  // Password requirement checks
+  // Validation rules
   const hasMinLength = password.length >= 8;
   const hasUppercase = /[A-Z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
@@ -96,12 +84,10 @@ export const RegisterPage: React.FC = () => {
 
       const { user: registeredUser, accessToken } = res.data.data;
 
-      // Authenticate session immediately
       if (registeredUser && accessToken) {
         setAuth(registeredUser, accessToken);
       }
 
-      // Smoothly navigate directly to the Workspace Creation Wizard
       navigate('/onboarding');
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || 'An error occurred during account registration. Please try again.';
@@ -111,174 +97,185 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface-canvas flex flex-col justify-center items-center p-4 sm:p-6">
-      <div className="w-full max-w-md">
-        {/* Header Branding */}
-        <div className="flex flex-col items-center text-center mb-6">
-          <Link to="/" className="inline-flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-2xl bg-brand-emerald flex items-center justify-center text-white shadow-bento-card">
-              <Sparkles className="w-5 h-5 text-brand-mint" />
-            </div>
-            <span className="text-xl font-bold text-text-primary tracking-tight">WorkSphere</span>
-          </Link>
-          <h2 className="text-2xl font-bold text-text-primary tracking-tight">
-            Sign up for WorkSphere
-          </h2>
-          <p className="text-xs text-text-secondary mt-1">
-            Create your account first, then configure your custom organization workspace.
-          </p>
+    <AuthLayout>
+      <Card className="bg-surface-card border border-border-subtle rounded-2xl p-7 sm:p-8 shadow-card">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-xl font-bold text-text-primary tracking-tight">Create your account</h1>
+          <p className="text-xs text-text-secondary mt-1">Get started with WorkSphere in less than a minute</p>
         </div>
 
-        {/* Card */}
-        <Card className="shadow-lg border border-border-subtle p-6 sm:p-8">
-          {/* Free Early Access Notice */}
-          <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200/90 text-emerald-950 text-xs flex items-start gap-2.5">
-            <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold text-slate-900">WorkSphere is 100% Free For Now!</span>
-              <p className="text-emerald-900 text-[11px] mt-0.5 leading-relaxed">
-                {plan ? (
-                  <>You selected the <strong className="font-semibold capitalize text-emerald-950">{plan}</strong> tier. </>
-                ) : null}
-                All Pro & Enterprise features are currently unlocked for all teams at zero cost. No credit card required.
-              </p>
+        {/* Error Alert */}
+        {errorMessage && (
+          <div
+            key={errorMessage}
+            className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200 text-status-error text-xs flex items-center gap-2 animate-shake"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Single-Screen Form */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Full Name */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="register-name" className="text-xs font-semibold text-text-primary tracking-tight">
+              Full Name
+            </label>
+            <div className="relative flex items-center">
+              <div className="absolute left-3 text-text-muted pointer-events-none flex items-center">
+                <User className="w-4 h-4" />
+              </div>
+              <input
+                id="register-name"
+                type="text"
+                placeholder="Alex Mercer"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoFocus
+                className="w-full h-10 pl-9 pr-3 rounded-xl bg-surface-card border border-border text-xs text-text-primary placeholder:text-text-muted transition-all focus:outline-none focus:border-brand-emerald focus:ring-2 focus:ring-brand-emerald/15 shadow-subtle"
+              />
             </div>
           </div>
 
-          {errorMessage && (
-            <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200 text-status-error text-xs flex items-center gap-2 animate-fade-in">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <Input
-              label="Full Name"
-              placeholder="e.g. Alex Mercer"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              autoFocus
-              leftIcon={<User className="w-4 h-4" />}
-            />
-
-            <Input
-              label="Work Email"
-              type="email"
-              placeholder="alex@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              leftIcon={<Mail className="w-4 h-4" />}
-            />
-
-            <div>
-              <div className="relative">
-                <Input
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  leftIcon={<Lock className="w-4 h-4" />}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-[29px] text-text-muted hover:text-text-primary transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+          {/* Work Email */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="register-email" className="text-xs font-semibold text-text-primary tracking-tight">
+              Work Email
+            </label>
+            <div className="relative flex items-center">
+              <div className="absolute left-3 text-text-muted pointer-events-none flex items-center">
+                <Mail className="w-4 h-4" />
               </div>
-
-              {/* Real-time password requirement checklist */}
-              <div className="mt-2 p-2.5 rounded-lg bg-surface-low/80 border border-border/60 text-[11px] flex flex-col gap-1">
-                <span className="font-semibold text-text-secondary">Password requirements:</span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-text-muted">
-                  <span className={`flex items-center gap-1.5 ${hasMinLength ? 'text-brand-emerald font-semibold' : ''}`}>
-                    <Check className={`w-3 h-3 ${hasMinLength ? 'text-brand-mint' : 'text-text-muted/40'}`} />
-                    8+ chars
-                  </span>
-                  <span className={`flex items-center gap-1.5 ${hasUppercase ? 'text-brand-emerald font-semibold' : ''}`}>
-                    <Check className={`w-3 h-3 ${hasUppercase ? 'text-brand-mint' : 'text-text-muted/40'}`} />
-                    1 uppercase
-                  </span>
-                  <span className={`flex items-center gap-1.5 ${hasNumber ? 'text-brand-emerald font-semibold' : ''}`}>
-                    <Check className={`w-3 h-3 ${hasNumber ? 'text-brand-mint' : 'text-text-muted/40'}`} />
-                    1 number
-                  </span>
-                </div>
-              </div>
+              <input
+                id="register-email"
+                type="email"
+                placeholder="name@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full h-10 pl-9 pr-3 rounded-xl bg-surface-card border border-border text-xs text-text-primary placeholder:text-text-muted transition-all focus:outline-none focus:border-brand-emerald focus:ring-2 focus:ring-brand-emerald/15 shadow-subtle"
+              />
             </div>
+          </div>
 
-            <div>
-              <Input
-                label="Confirm Password"
+          {/* Password */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="register-password" className="text-xs font-semibold text-text-primary tracking-tight">
+              Password
+            </label>
+            <div className="relative flex items-center">
+              <div className="absolute left-3 text-text-muted pointer-events-none flex items-center">
+                <Lock className="w-4 h-4" />
+              </div>
+              <input
+                id="register-password"
                 type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full h-10 pl-9 pr-10 rounded-xl bg-surface-card border border-border text-xs text-text-primary placeholder:text-text-muted transition-all focus:outline-none focus:border-brand-emerald focus:ring-2 focus:ring-brand-emerald/15 shadow-subtle"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute right-3 text-text-muted hover:text-text-primary transition-colors focus:outline-none"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {password && (
+              <p className="text-[11px] text-text-muted mt-0.5">
+                {isPasswordValid ? (
+                  <span className="text-brand-emerald font-medium inline-flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5 text-brand-mint" /> Password meets requirements
+                  </span>
+                ) : (
+                  'At least 8 characters with 1 uppercase letter and 1 number.'
+                )}
+              </p>
+            )}
+          </div>
+
+          {/* Confirm Password */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="register-confirm-password" className="text-xs font-semibold text-text-primary tracking-tight">
+              Confirm Password
+            </label>
+            <div className="relative flex items-center">
+              <div className="absolute left-3 text-text-muted pointer-events-none flex items-center">
+                <Lock className="w-4 h-4" />
+              </div>
+              <input
+                id="register-confirm-password"
+                type={showConfirm ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                leftIcon={<Lock className="w-4 h-4" />}
+                className="w-full h-10 pl-9 pr-10 rounded-xl bg-surface-card border border-border text-xs text-text-primary placeholder:text-text-muted transition-all focus:outline-none focus:border-brand-emerald focus:ring-2 focus:ring-brand-emerald/15 shadow-subtle"
               />
-              {confirmPassword && (
-                <div className="mt-1 text-[11px]">
-                  {passwordsMatch ? (
-                    <span className="text-brand-emerald flex items-center gap-1 font-medium">
-                      <Check className="w-3.5 h-3.5" /> Passwords match
-                    </span>
-                  ) : (
-                    <span className="text-status-error flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5" /> Passwords do not match
-                    </span>
-                  )}
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                className="absolute right-3 text-text-muted hover:text-text-primary transition-colors focus:outline-none"
+              >
+                {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
-
-            <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              className="w-full mt-2"
-              isLoading={isLoading}
-              rightIcon={<ArrowRight className="w-4 h-4" />}
-            >
-              Sign Up & Create Workspace
-            </Button>
-          </form>
-
-          {/* Value callout */}
-          <div className="mt-5 pt-4 border-t border-border-divider flex items-center justify-center gap-2 text-[11px] text-text-muted">
-            <ShieldCheck className="w-4 h-4 text-brand-emerald" />
-            <span>Enterprise-grade security • Zero setup fee</span>
+            {confirmPassword && (
+              <p className="text-[11px] mt-0.5">
+                {passwordsMatch ? (
+                  <span className="text-brand-emerald font-medium inline-flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5 text-brand-mint" /> Passwords match
+                  </span>
+                ) : (
+                  <span className="text-status-error font-medium inline-flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600" /> Passwords do not match
+                  </span>
+                )}
+              </p>
+            )}
           </div>
-        </Card>
 
-        {/* Existing account link */}
-        <p className="text-center text-xs text-text-secondary mt-6">
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-brand-emerald hover:underline">
-            Sign In here
-          </Link>
-        </p>
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            className="w-full h-10 mt-2 bg-brand-emerald hover:bg-brand-primary text-white font-medium text-xs rounded-xl shadow-2xs hover:shadow-xs focus:ring-2 focus:ring-brand-emerald/25 transition-all flex items-center justify-center gap-2 border border-emerald-800/60"
+            isLoading={isLoading}
+          >
+            <span>Create Account</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Button>
+        </form>
 
-        {/* Legal Terms Note */}
-        <p className="text-center text-[11px] text-text-muted mt-3">
+        {/* Terms Note */}
+        <p className="text-center text-[11px] text-text-muted mt-4 leading-normal">
           By signing up, you agree to our{' '}
-          <Link to="/terms" className="underline hover:text-text-primary">
+          <Link to="/terms" className="text-brand-emerald underline hover:text-brand-primary">
             Terms of Service
           </Link>{' '}
           and{' '}
-          <Link to="/privacy" className="underline hover:text-text-primary">
+          <Link to="/privacy" className="text-brand-emerald underline hover:text-brand-primary">
             Privacy Policy
           </Link>
           .
         </p>
-      </div>
-    </div>
+
+        {/* Switch Link */}
+        <p className="text-center text-xs text-text-secondary mt-5 pt-4 border-t border-border-divider">
+          Already have an account?{' '}
+          <Link to="/login" className="font-semibold text-brand-emerald hover:text-brand-primary hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </Card>
+    </AuthLayout>
   );
 };
 
