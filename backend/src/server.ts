@@ -38,6 +38,7 @@ import capacityRouter from './routes/capacity.js';
 import commentsRouter from './routes/comments.js';
 import activityRouter from './routes/activity.js';
 import automationRouter from './routes/automation.js';
+import blogRouter from './routes/blog.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -130,6 +131,7 @@ apiRouter.use('/availability', capacityRouter);
 apiRouter.use('/comments', commentsRouter);
 apiRouter.use('/activity', activityRouter);
 apiRouter.use('/automation', automationRouter);
+apiRouter.use('/blog', blogRouter);
 
 // Canonical versioned mount (/api/v1/*) and legacy alias mount (/api/*)
 app.use('/api/v1', apiRouter);

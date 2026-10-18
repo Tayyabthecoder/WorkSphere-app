@@ -25,6 +25,7 @@ const prefixes = {
   inv: 'inv',
   invitation: 'inv',
   team: 'team',
+  blog: 'blg',
 } as const;
 
 export type IdPrefix = keyof typeof prefixes;

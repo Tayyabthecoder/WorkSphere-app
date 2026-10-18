@@ -13,6 +13,7 @@ const ServicesPage = lazy(() => import('./pages/marketing/ServicesPage'));
 const AboutPage = lazy(() => import('./pages/marketing/AboutPage'));
 const PricingPage = lazy(() => import('./pages/marketing/PricingPage'));
 const BlogPage = lazy(() => import('./pages/marketing/BlogPage'));
+const BlogPostPage = lazy(() => import('./pages/marketing/BlogPostPage'));
 const ContactPage = lazy(() => import('./pages/marketing/ContactPage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/marketing/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('./pages/marketing/TermsOfServicePage'));
@@ -68,6 +69,7 @@ export const App: React.FC = () => {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:slug" element={<BlogPostPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
@@ -181,6 +183,7 @@ export const App: React.FC = () => {
               <Route path="/admin/announcements" element={<AdminPage />} />
               <Route path="/admin/health" element={<AdminPage />} />
               <Route path="/admin/email-templates" element={<AdminPage />} />
+              <Route path="/admin/blog" element={<AdminPage />} />
             </Route>
           </Route>
 

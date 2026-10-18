@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import MarketingLayout from '../../components/marketing/MarketingLayout';
 import {
   Clock,
@@ -6,8 +7,12 @@ import {
   Search,
   BookOpen,
   X,
-  ChevronDown
+  ChevronDown,
+  Loader2,
+  Calendar,
 } from 'lucide-react';
+import { fetchPublishedPosts, fetchBlogCategories, BlogPost, getAuthorDetails } from '../../api/blog';
+import { STATIC_BLOG_POSTS } from '../../api/blogSeedData';
 
 interface FaqItem {
   question: string;
@@ -33,21 +38,7 @@ const blogFaqs: FaqItem[] = [
   }
 ];
 
-interface BlogPost {
-  id: string;
-  slug: string;
-  title: string;
-  excerpt: string;
-  category: string;
-  readTime: string;
-  date: string;
-  author: string;
-  authorRole: string;
-  featured?: boolean;
-  tags?: string[];
-}
-
-const categories = [
+const DEFAULT_CATEGORIES = [
   'All Articles',
   'Engineering & Architecture',
   'Methodology & Agile',
@@ -55,124 +46,114 @@ const categories = [
   'Product Releases'
 ];
 
-const blogPosts: BlogPost[] = [
-  {
-    id: 'post-0',
-    slug: 'architecting-sub-50ms-multi-tenant-state-mern-websockets',
-    title: 'Architecting Sub-50ms Multi-Tenant State with MERN and Real-Time WebSockets',
-    excerpt: 'How WorkSphere eliminates cross-tenant data bleed while streaming instant card drag-and-drops, active sprint timers, and task dependencies to peer screens in milliseconds.',
-    category: 'Engineering & Architecture',
-    readTime: '8 min read',
-    date: 'Oct 11, 2026',
-    author: 'Elena Rostova',
-    authorRole: 'VP of Engineering',
-    tags: ['WebSockets', 'MERN Stack', 'Multi-Tenancy']
-  },
-  {
-    id: 'post-1',
-    slug: 'why-schema-level-isolation-beats-database-per-tenant',
-    title: 'Why Schema-Level Isolation Beats Database-Per-Tenant for Modern SaaS Scale',
-    excerpt: 'An in-depth analysis of logical tenant partitioning, connection pool overhead, and multi-region replica routing for 10,000+ organizations.',
-    category: 'Engineering & Architecture',
-    readTime: '7 min read',
-    date: 'Oct 9, 2026',
-    author: 'Marcus Thorne',
-    authorRole: 'Principal Architect',
-    tags: ['Database', 'Architecture', 'Security']
-  },
-  {
-    id: 'post-2',
-    slug: 'why-hybrid-project-management-is-replacing-dogmatic-scrum',
-    title: 'Why Hybrid Project Management is Replacing Dogmatic Scrum in 2026',
-    excerpt: 'Modern engineering squads are ditching rigid ceremony rituals in favor of milestone-anchored sprint cadences and continuous Kanban flows.',
-    category: 'Methodology & Agile',
-    readTime: '6 min read',
-    date: 'Oct 7, 2026',
-    author: 'Sarah Jenkins',
-    authorRole: 'Head of Product',
-    tags: ['Agile', 'Scrum', 'Kanban']
-  },
-  {
-    id: 'post-3',
-    slug: 'hidden-cost-of-saas-tool-fragmentation-agency-audit',
-    title: 'The Hidden Cost of SaaS Tool Fragmentation: A 50-Agency Audit',
-    excerpt: 'We audited 50 digital agencies and discovered teams lose an average of $43.50 per seat and 4.2 hours a week jumping between disparate tools.',
-    category: 'Agency Operations',
-    readTime: '5 min read',
-    date: 'Oct 4, 2026',
-    author: 'Maya Patel',
-    authorRole: 'Customer Operations',
-    tags: ['SaaS ROI', 'Productivity', 'Finance']
-  },
-  {
-    id: 'post-4',
-    slug: 'zero-lag-kanban-optimizing-compound-indexes-mongodb',
-    title: 'Zero-Lag Kanban: Optimizing Compound Indexes for 50,000+ Active Tasks',
-    excerpt: 'Deep dive into MongoDB query plan analyzers, partial index clustering, and state delta caching for fluid board drag-and-drops.',
-    category: 'Engineering & Architecture',
-    readTime: '6 min read',
-    date: 'Sep 29, 2026',
-    author: 'David Chen',
-    authorRole: 'Founder & CEO',
-    tags: ['Performance', 'MongoDB', 'UI Latency']
-  },
-  {
-    id: 'post-5',
-    slug: 'stop-leaking-billable-hours-live-timers-vs-timesheets',
-    title: 'Stop Leaking Billable Hours: Moving from Retrospective Timesheets to Live Timers',
-    excerpt: 'Retrospective Friday guesswork causes up to 18% of client project revenue leakage. Here is how modern teams capture real billables automatically.',
-    category: 'Agency Operations',
-    readTime: '4 min read',
-    date: 'Sep 24, 2026',
-    author: 'Carlos Mendez',
-    authorRole: 'Agency Founder',
-    tags: ['Timesheets', 'Budgets', 'Billing']
-  },
-  {
-    id: 'post-6',
-    slug: 'worksphere-release-interactive-gantt-timelines-client-portals',
-    title: 'WorkSphere 2.4 Release: Interactive Gantt Timelines & Client Portals',
-    excerpt: 'Introducing two-way milestone dependency snapping, critical path highlighting, and zero-seat-cost external client access permissions.',
-    category: 'Product Releases',
-    readTime: '3 min read',
-    date: 'Sep 18, 2026',
-    author: 'Sarah Jenkins',
-    authorRole: 'Head of Product',
-    tags: ['Product Update', 'Gantt', 'Portals']
-  }
-];
-
 export const BlogPage: React.FC = () => {
+  const navigate = useNavigate();
+
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [selectedCategory, setSelectedCategory] = useState<string>('All Articles');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  // Debounce search query by 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Load distinct categories once
+  useEffect(() => {
+    let isMounted = true;
+    const loadCategories = async () => {
+      try {
+        const catList = await fetchBlogCategories();
+        if (isMounted && catList && catList.length > 0) {
+          const merged = ['All Articles', ...Array.from(new Set([...catList, ...DEFAULT_CATEGORIES.slice(1)]))];
+          setCategories(merged);
+        }
+      } catch {
+        // Fall back to default categories
+      }
+    };
+    loadCategories();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Fetch published posts whenever category or debouncedSearch changes
+  useEffect(() => {
+    let isMounted = true;
+    const loadPosts = async () => {
+      try {
+        setIsLoading(true);
+        const res = await fetchPublishedPosts({
+          category: selectedCategory !== 'All Articles' ? selectedCategory : undefined,
+          search: debouncedSearch.trim() || undefined,
+          limit: 30,
+        });
+        if (isMounted) {
+          if (res?.data && res.data.length > 0) {
+            setPosts(res.data);
+          } else if (!debouncedSearch.trim() && selectedCategory === 'All Articles') {
+            setPosts(STATIC_BLOG_POSTS);
+          } else {
+            // Filter STATIC_BLOG_POSTS locally if search/category was applied
+            const filtered = STATIC_BLOG_POSTS.filter((p) => {
+              const matchesCat = selectedCategory === 'All Articles' || p.category === selectedCategory;
+              const q = debouncedSearch.trim().toLowerCase();
+              const matchesQuery = !q || p.title.toLowerCase().includes(q) || p.excerpt.toLowerCase().includes(q);
+              return matchesCat && matchesQuery;
+            });
+            setPosts(filtered);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load published blog posts:', err);
+        if (isMounted) {
+          const filtered = STATIC_BLOG_POSTS.filter((p) => {
+            const matchesCat = selectedCategory === 'All Articles' || p.category === selectedCategory;
+            const q = debouncedSearch.trim().toLowerCase();
+            const matchesQuery = !q || p.title.toLowerCase().includes(q) || p.excerpt.toLowerCase().includes(q);
+            return matchesCat && matchesQuery;
+          });
+          setPosts(filtered);
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    loadPosts();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedCategory, debouncedSearch]);
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
   };
 
-  // Filtered posts calculation
-  const filteredPosts = useMemo(() => {
-    return blogPosts.filter((post) => {
-      const matchesCategory =
-        selectedCategory === 'All Articles' || post.category === selectedCategory;
-
-      const query = searchQuery.trim().toLowerCase();
-      const matchesSearch =
-        !query ||
-        post.title.toLowerCase().includes(query) ||
-        post.excerpt.toLowerCase().includes(query) ||
-        post.author.toLowerCase().includes(query) ||
-        post.authorRole.toLowerCase().includes(query) ||
-        (post.tags && post.tags.some((tag) => tag.toLowerCase().includes(query)));
-
-      return matchesCategory && matchesSearch;
-    });
-  }, [selectedCategory, searchQuery]);
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Oct 2026';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return dateString;
+    }
+  };
 
   return (
     <MarketingLayout>
-      <div className="bg-[#FAFBF9]">
+      <div className="bg-[#FAFBF9] min-h-screen">
         
         {/* Compact Editorial Header & Articles Feed */}
         <section className="pt-10 sm:pt-14 pb-12 md:pb-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-10">
@@ -185,7 +166,7 @@ export const BlogPage: React.FC = () => {
                 <span>WorkSphere Dispatch</span>
               </div>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-extrabold text-slate-900 tracking-[-0.03em] leading-tight">
-                Articles & Insights
+                Articles &amp; Insights
               </h1>
               <p className="text-sm sm:text-base text-slate-500 max-w-xl font-normal leading-relaxed">
                 Perspectives on high-velocity project execution, modern software architecture, and agile craft.
@@ -237,8 +218,35 @@ export const BlogPage: React.FC = () => {
               );
             })}
           </div>
-          
-          {filteredPosts.length === 0 ? (
+
+          {/* Articles Feed */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 py-10">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white p-7 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between space-y-6 animate-pulse"
+                >
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div className="h-4 w-24 bg-slate-200 rounded-full" />
+                      <div className="h-4 w-16 bg-slate-100 rounded" />
+                    </div>
+                    <div className="h-6 w-5/6 bg-slate-200 rounded" />
+                    <div className="h-4 w-full bg-slate-100 rounded" />
+                    <div className="h-4 w-4/6 bg-slate-100 rounded" />
+                  </div>
+                  <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
+                    <div className="space-y-1">
+                      <div className="h-4 w-24 bg-slate-200 rounded" />
+                      <div className="h-3 w-32 bg-slate-100 rounded" />
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-slate-100" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : posts.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center max-w-md mx-auto space-y-4 shadow-2xs">
               <BookOpen className="w-8 h-8 text-slate-400 mx-auto" />
               <h3 className="text-lg font-bold text-slate-900">No articles found</h3>
@@ -251,54 +259,63 @@ export const BlogPage: React.FC = () => {
                   setSearchQuery('');
                   setSelectedCategory('All Articles');
                 }}
-                className="px-5 py-2 rounded-full bg-[#003629] text-white text-xs font-bold hover:bg-[#1B4D3E] transition-all cursor-pointer"
+                className="px-5 py-2 rounded-full bg-[#003629] text-white text-xs font-bold hover:bg-[#1B4D3E] transition-all cursor-pointer shadow-xs"
               >
                 Reset Filters
               </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredPosts.map((post) => (
-                <div
-                  key={post.id}
-                  className="bg-white p-7 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-slate-300 hover:shadow-card-hover transition-all duration-200 flex flex-col justify-between space-y-6 group cursor-pointer"
-                >
-                  <div className="space-y-4">
-                    {/* Meta Header */}
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#006C4B] border border-emerald-200/70">
-                        {post.category}
-                      </span>
-                      <span className="text-slate-400 flex items-center gap-1 font-medium">
-                        <Clock className="w-3.5 h-3.5" />
-                        {post.readTime}
-                      </span>
+              {posts.map((post) => {
+                const author = getAuthorDetails(post);
+                const categoryName = typeof post.category === 'object' && post.category ? ((post.category as any).name || 'Engineering') : (post.category || 'Engineering');
+                return (
+                  <div
+                    key={post.postId || post.slug}
+                    onClick={() => navigate(`/blog/${post.slug}`)}
+                    className="bg-white p-7 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-slate-300 hover:shadow-card-hover transition-all duration-200 flex flex-col justify-between space-y-6 group cursor-pointer"
+                  >
+                    <div className="space-y-4">
+                      {/* Meta Header */}
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#006C4B] border border-emerald-200/70">
+                          {categoryName}
+                        </span>
+                        <span className="text-slate-400 flex items-center gap-1 font-medium">
+                          <Clock className="w-3.5 h-3.5" />
+                          {post.readTimeMinutes || 5} min read
+                        </span>
+                      </div>
+
+                      {/* Article Title */}
+                      <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 group-hover:text-[#006C4B] transition-colors leading-snug">
+                        {post.title}
+                      </h3>
+
+                      {/* Excerpt */}
+                      <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-normal line-clamp-3">
+                        {post.excerpt}
+                      </p>
                     </div>
 
-                    {/* Article Title */}
-                    <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 group-hover:text-[#006C4B] transition-colors leading-snug">
-                      {post.title}
-                    </h3>
+                    {/* Author & Read prompt */}
+                    <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+                      <div>
+                        <div className="font-bold text-slate-800">
+                          {author.name}
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          {author.role} · {formatDate(post.publishedAt || post.createdAt)}
+                        </div>
+                      </div>
 
-                    {/* Excerpt */}
-                    <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-normal">
-                      {post.excerpt}
-                    </p>
+                      <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-[#003629] text-slate-400 group-hover:text-white flex items-center justify-center transition-colors">
+                        <ArrowUpRight className="w-4 h-4" />
+                      </div>
+                    </div>
                   </div>
-
-                  {/* Author & Read prompt */}
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <div>
-                      <div className="font-bold text-slate-800">{post.author}</div>
-                      <div className="text-[11px] text-slate-400">{post.authorRole} · {post.date}</div>
-                    </div>
-
-                    <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-[#003629] text-slate-400 group-hover:text-white flex items-center justify-center transition-colors">
-                      <ArrowUpRight className="w-4 h-4" />
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

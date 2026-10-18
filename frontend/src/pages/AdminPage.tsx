@@ -14,6 +14,7 @@ import { PlatformHealthView } from '../features/admin/components/PlatformHealthV
 import { EmailTemplateManagerView } from '../features/admin/components/EmailTemplateManagerView';
 import { RetentionPolicyView } from '../features/admin/components/RetentionPolicyView';
 import { SecurityPolicyView } from '../features/admin/components/SecurityPolicyView';
+import { BlogManagerView } from '../features/admin/components/BlogManagerView';
 import { AdminCommandBar } from '../features/admin/components/AdminCommandBar';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 
@@ -47,6 +48,7 @@ export const AdminPage: React.FC = () => {
     if (path === '/admin/email-templates') return <EmailTemplateManagerView />;
     if (path === '/admin/retention') return <RetentionPolicyView />;
     if (path === '/admin/security') return <SecurityPolicyView />;
+    if (path === '/admin/blog') return <BlogManagerView />;
     return <AdminFleetView />;
   };
 

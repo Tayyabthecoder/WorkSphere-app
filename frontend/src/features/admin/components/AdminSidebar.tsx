@@ -13,6 +13,7 @@ import {
   UserCheck,
   Settings,
   ShieldCheck,
+  BookOpen,
 } from 'lucide-react';
 
 interface NavItem {
@@ -79,6 +80,11 @@ const NAV_ITEMS: NavItem[] = [
     name: 'Email Templates',
     href: '/admin/email-templates',
     icon: Mail,
+  },
+  {
+    name: 'Blog & Editorial',
+    href: '/admin/blog',
+    icon: BookOpen,
   },
 ];
 
