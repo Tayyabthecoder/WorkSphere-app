@@ -1,13 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Layers, 
   Github, 
   Twitter, 
   Linkedin, 
   Disc as Discord, 
   Heart
 } from 'lucide-react';
+import { BrandLogo } from '../common/BrandLogo';
 
 export const MarketingFooter: React.FC = () => {
   return (
@@ -19,15 +19,7 @@ export const MarketingFooter: React.FC = () => {
           
           {/* Brand & Identity (Spans 2 cols on lg) */}
           <div className="lg:col-span-2 space-y-5">
-            <Link to="/" className="inline-flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl bg-[#003629] p-0.5 border border-[#34D399]/40 flex items-center justify-center transition-transform group-hover:scale-105">
-                <Layers className="w-4.5 h-4.5 text-[#64F9BC]" />
-              </div>
-              <span className="font-display font-extrabold text-2xl text-slate-900 tracking-tight flex items-center gap-1">
-                WorkSphere
-                <span className="w-1.5 h-1.5 rounded-full bg-[#006C4B]" />
-              </span>
-            </Link>
+            <BrandLogo to="/" variant="full" size="md" theme="light" />
 
             <p className="text-slate-600 text-sm max-w-sm leading-relaxed">
               The unified project management platform for high-velocity teams. Run Agile sprints, Gantt timelines, and financial governance with zero friction.

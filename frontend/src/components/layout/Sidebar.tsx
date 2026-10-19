@@ -25,6 +25,7 @@ import { Avatar } from '../ui/Avatar';
 import { useAuthStore } from '../../store/auth';
 import { UserRole } from '../../lib/rbac';
 import apiClient from '../../api/client';
+import { BrandMark } from '../common/BrandLogo';
 
 interface NavItem {
   label: string;
@@ -169,8 +170,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-3 border-b border-border/80 flex items-center justify-between">
           <div className="flex items-center justify-between p-1.5 rounded-lg hover:bg-surface-low transition-colors cursor-pointer group flex-1 mr-1">
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-emerald to-brand-primary flex items-center justify-center text-white shadow-2xs border border-emerald-700/30 shrink-0 group-hover:scale-105 transition-transform">
-                <Sparkles className="w-4 h-4 text-brand-mint" />
+              <div className="w-8 h-8 rounded-lg bg-[#003629] flex items-center justify-center p-1 text-white shadow-2xs border border-[#34D399]/40 shrink-0 group-hover:scale-105 transition-transform">
+                <BrandMark className="w-full h-full" />
               </div>
               <div className="flex flex-col overflow-hidden">
                 <div className="flex items-center gap-1.5">

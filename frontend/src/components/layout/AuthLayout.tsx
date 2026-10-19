@@ -1,6 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Sparkles } from 'lucide-react';
+import { BrandLogo } from '../common/BrandLogo';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -19,12 +18,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
 
       {/* Brand Header */}
       <div className="relative mb-8 text-center">
-        <Link to="/" className="inline-flex items-center gap-3 group focus:outline-none">
-          <div className="w-10 h-10 rounded-2xl bg-brand-emerald text-white flex items-center justify-center shadow-bento-card group-hover:scale-105 transition-transform duration-200">
-            <Sparkles className="w-5 h-5 text-brand-mint" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-text-primary">WorkSphere</span>
-        </Link>
+        <BrandLogo to="/" variant="compact" size="lg" />
       </div>
 
       {/* Floating Card Container */}

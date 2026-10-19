@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
-  Layers, 
   Menu, 
   X, 
   ArrowRight, 
   LayoutDashboard
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
+import { BrandLogo } from '../common/BrandLogo';
 
 interface NavItem {
   label: string;
@@ -57,27 +57,7 @@ export const MarketingHeader: React.FC = () => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         {/* Brand Logo */}
-        <Link 
-          to="/" 
-          className="flex items-center gap-3 group focus:outline-hidden"
-          aria-label="WorkSphere Home"
-        >
-          <div className="w-10 h-10 rounded-xl bg-[#003629] p-0.5 shadow-xs flex items-center justify-center transition-transform group-hover:scale-105 border border-[#34D399]/40">
-            <div className="w-full h-full bg-[#003629] rounded-[10px] flex items-center justify-center relative overflow-hidden">
-              <Layers className="w-5 h-5 text-[#64F9BC] transition-transform group-hover:rotate-6" />
-              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#64F9BC] rounded-full shadow-[0_0_6px_#64F9BC]" />
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <span className="font-display font-bold text-xl text-slate-900 tracking-tight flex items-center gap-1">
-              WorkSphere
-              <span className="w-1.5 h-1.5 rounded-full bg-[#006C4B]" />
-            </span>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-[#006C4B] -mt-0.5">
-              Work Operating System
-            </span>
-          </div>
-        </Link>
+        <BrandLogo to="/" variant="full" size="md" theme="light" />
 
         {/* Desktop Navigation Links */}
         <nav className="hidden md:flex items-center gap-1 lg:gap-2 bg-slate-100/70 p-1.5 rounded-full border border-slate-200/60 shadow-2xs">
