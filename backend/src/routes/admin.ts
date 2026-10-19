@@ -26,6 +26,7 @@ import { assertPermission } from '../middleware/rbac.js';
 import { generateId } from '../utils/id.js';
 import { CURRENCY_SYMBOLS, getCurrencyForCountry } from '../utils/currency.js';
 import { ENV } from '../config/env.js';
+import { escapeRegex } from '../utils/regex.js';
 
 const router = Router();
 router.use(verifyAuth);
@@ -348,7 +349,7 @@ router.get('/audit-log', async (req: Request, res: Response) => {
 
     const query: any = {};
     if (tenantId && tenantId !== 'all') query.tenantId = tenantId;
-    if (action) query.action = { $regex: String(action), $options: 'i' };
+    if (action) query.action = { $regex: escapeRegex(String(action)), $options: 'i' };
     if (entityType && entityType !== 'all') query.entityType = entityType;
 
     if (fromDate || toDate) {
@@ -1190,7 +1191,7 @@ router.get('/search', async (req: Request, res: Response) => {
       return sendApiResponse(res, { tenants: [], users: [], projects: [] });
     }
 
-    const regex = new RegExp(q, 'i');
+    const regex = new RegExp(escapeRegex(q), 'i');
 
     const [tenants, users, projects] = await Promise.all([
       TenantModel.find({
@@ -1381,7 +1382,7 @@ router.get('/users', async (req: Request, res: Response) => {
     if (status === 'inactive') query.isActive = false;
 
     if (q) {
-      const regex = new RegExp(String(q).trim(), 'i');
+      const regex = new RegExp(escapeRegex(String(q).trim()), 'i');
       query.$or = [{ name: regex }, { email: regex }, { userId: regex }];
     }
 

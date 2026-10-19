@@ -28,6 +28,8 @@ export interface IUser extends Document {
   jobTitle?: string;
   timezone?: string;
   notificationPrefs?: Record<string, unknown>;
+  resetPasswordTokenHash?: string | null;
+  resetPasswordExpires?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +41,8 @@ const UserSchema = new Schema<IUser>(
     email: { type: String, required: true, lowercase: true, trim: true },
     passwordHash: { type: String },
     refreshTokenHash: { type: String, select: false, default: null },
+    resetPasswordTokenHash: { type: String, select: false, default: null },
+    resetPasswordExpires: { type: Date, default: null },
     name: { type: String, required: true, trim: true },
     avatarUrl: { type: String },
     role: {

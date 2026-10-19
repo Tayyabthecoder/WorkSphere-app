@@ -24,7 +24,17 @@ const CreateProjectSchema = z.object({
   clientId: z.string().nullable().optional(),
 });
 
-const UpdateProjectSchema = z.object({
+export const ProjectMemberSchema = z.object({
+  userId: z.string(),
+  role: z.enum(['manager', 'member', 'viewer']).default('member'),
+});
+
+export const ProjectMemberInputSchema = z.union([
+  ProjectMemberSchema,
+  z.string().transform((userId) => ({ userId, role: 'member' as const })),
+]);
+
+export const UpdateProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required').max(100).optional(),
   description: z.string().optional(),
   status: z.enum(['Active', 'On Hold', 'Completed', 'Archived']).optional(),
@@ -42,7 +52,7 @@ const UpdateProjectSchema = z.object({
   currency: z.string().optional(),
   clientId: z.string().nullable().optional(),
   phases: z.array(z.any()).optional(),
-  members: z.array(z.string()).optional(),
+  members: z.array(ProjectMemberInputSchema).optional(),
   settings: z.record(z.unknown()).optional(),
 });
 

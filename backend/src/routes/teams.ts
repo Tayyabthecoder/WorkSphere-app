@@ -5,12 +5,13 @@ import { TaskModel } from '../models/Task.js';
 import { ActivityLogModel } from '../models/ActivityLog.js';
 import { generateId } from '../utils/id.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
-import { verifyAuth } from '../middleware/auth.js';
+import { verifyAuth, verifyTenantActive } from '../middleware/auth.js';
 import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '../utils/errors.js';
 import { emitToTenant } from '../socket/index.js';
 
 const router = Router();
 router.use(verifyAuth);
+router.use(verifyTenantActive);
 
 /**
  * Helper to fetch task statistics map for given user IDs

@@ -18,15 +18,22 @@ router.get('/', async (req: Request, res: Response) => {
       return sendApiError(res, { code: 'TENANT_NOT_FOUND', message: 'Workspace not found' }, 404);
     }
 
+    const rawSettings = (tenant.settings || {}) as Record<string, any>;
     return sendApiResponse(res, {
       tenantId: tenant.tenantId,
       name: tenant.name,
       slug: tenant.slug,
       status: tenant.status,
       logoUrl: tenant.logoUrl,
-      timezone: tenant.timezone,
-      language: tenant.language,
-      settings: tenant.settings,
+      timezone: tenant.timezone || 'UTC',
+      language: tenant.language || 'en',
+      country: tenant.country || '',
+      settings: {
+        currency: rawSettings.currency || 'USD',
+        currencySymbol: rawSettings.currencySymbol || '$',
+        dateFormat: rawSettings.dateFormat || 'MM/DD/YYYY',
+        plan: rawSettings.plan || 'Free',
+      },
     });
   } catch (error: any) {
     return sendApiError(res, error, 500);

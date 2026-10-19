@@ -2,11 +2,12 @@ import { Router, Request, Response } from 'express';
 import { AnnouncementModel } from '../models/Announcement.js';
 import { generateId } from '../utils/id.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
-import { verifyAuth } from '../middleware/auth.js';
+import { verifyAuth, verifyTenantActive } from '../middleware/auth.js';
 import { assertPermission } from '../middleware/rbac.js';
 
 const router = Router();
 router.use(verifyAuth);
+router.use(verifyTenantActive);
 
 router.get('/', async (req: Request, res: Response) => {
   try {

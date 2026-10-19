@@ -12,6 +12,7 @@ import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
 import { verifyAuth } from '../middleware/auth.js';
 import { ValidationError, ConflictError, UnauthorizedError, NotFoundError } from '../utils/errors.js';
 import { getCurrencyForCountry } from '../utils/currency.js';
+import { sendEmail } from '../utils/email.js';
 import { ENV } from '../config/env.js';
 
 const router = Router();
@@ -695,6 +696,95 @@ router.post('/accept-invite', async (req: Request, res: Response) => {
       },
       201
     );
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+const ForgotPasswordSchema = z.object({
+  email: z.string().email('Please provide a valid email address'),
+});
+
+const ResetPasswordSchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one digit'),
+});
+
+// POST /api/v1/auth/forgot-password
+router.post('/forgot-password', async (req: Request, res: Response) => {
+  try {
+    const parseResult = ForgotPasswordSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return sendApiError(res, new ValidationError('Validation failed', parseResult.error.flatten().fieldErrors), 422);
+    }
+
+    const { email } = parseResult.data;
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await UserModel.findOne({ email: normalizedEmail, isActive: true });
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = hashToken(rawToken);
+
+      user.resetPasswordTokenHash = tokenHash;
+      user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      await user.save();
+
+      const clientUrl = ENV.CLIENT_URL || 'http://localhost:5173';
+      const resetUrl = `${clientUrl}/reset-password?token=${rawToken}`;
+
+      await sendEmail({
+        to: user.email,
+        subject: 'Reset Your WorkSphere Password',
+        text: `Hello ${user.name},\n\nYou recently requested to reset your password for your WorkSphere account.\n\nPlease click the link below to set a new password (valid for 1 hour):\n${resetUrl}\n\nIf you did not request this, please safely ignore this email.`,
+        html: `<p>Hello ${user.name},</p><p>You recently requested to reset your password for your WorkSphere account.</p><p><a href="${resetUrl}" style="display:inline-block;padding:10px 20px;background:#10b981;color:#ffffff;text-decoration:none;border-radius:6px;">Reset Password</a></p><p>Or copy and paste this link: <br/><a href="${resetUrl}">${resetUrl}</a></p><p>This link is valid for 1 hour. If you did not request this, please safely ignore this email.</p>`,
+      });
+    }
+
+    // Always respond with success to prevent user enumeration
+    return sendApiResponse(res, {
+      message: 'If an account with that email exists, password reset instructions have been sent.',
+    });
+  } catch (error: any) {
+    return sendApiError(res, error);
+  }
+});
+
+// POST /api/v1/auth/reset-password
+router.post('/reset-password', async (req: Request, res: Response) => {
+  try {
+    const parseResult = ResetPasswordSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return sendApiError(res, new ValidationError('Validation failed', parseResult.error.flatten().fieldErrors), 422);
+    }
+
+    const { token, password } = parseResult.data;
+    const tokenHash = hashToken(token);
+
+    const user = await UserModel.findOne({
+      resetPasswordTokenHash: tokenHash,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return sendApiError(res, new UnauthorizedError('Invalid or expired password reset token'), 400);
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    user.passwordHash = passwordHash;
+    user.resetPasswordTokenHash = null;
+    user.resetPasswordExpires = null;
+    user.refreshTokenHash = null; // Invalidate current refresh tokens for security
+    user.updatedAt = new Date();
+    await user.save();
+
+    return sendApiResponse(res, {
+      message: 'Password has been successfully reset. You may now log in with your new credentials.',
+    });
   } catch (error: any) {
     return sendApiError(res, error);
   }

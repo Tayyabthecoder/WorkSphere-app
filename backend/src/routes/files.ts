@@ -6,13 +6,14 @@ import { ProjectModel } from '../models/Project.js';
 import { ActivityLogModel } from '../models/ActivityLog.js';
 import { generateId } from '../utils/id.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
-import { verifyAuth } from '../middleware/auth.js';
+import { verifyAuth, verifyTenantActive } from '../middleware/auth.js';
 import { assertPermission } from '../middleware/rbac.js';
 import { ValidationError, NotFoundError } from '../utils/errors.js';
 import { fileUploadMiddleware, deleteLocalFile } from '../services/storage.js';
 
 const router = Router();
 router.use(verifyAuth);
+router.use(verifyTenantActive);
 
 const CreateFileSchema = z.object({
   name: z.string().min(1, 'File name is required'),
@@ -63,7 +64,7 @@ router.get('/', async (req: Request, res: Response) => {
 router.post('/upload', fileUploadMiddleware.single('file') as any, async (req: Request, res: Response) => {
   try {
     const user = req.user!;
-    assertPermission(user.role, 'project:update');
+    assertPermission(user.role, 'file:upload');
 
     if (!req.file) {
       return sendApiError(res, new ValidationError('No file was uploaded'), 400);

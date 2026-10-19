@@ -4,12 +4,13 @@ import { UserModel } from '../models/User.js';
 import { ProjectModel } from '../models/Project.js';
 import { ActivityLogModel } from '../models/ActivityLog.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
-import { verifyAuth } from '../middleware/auth.js';
+import { verifyAuth, verifyTenantActive } from '../middleware/auth.js';
 import { CURRENCY_SYMBOLS } from '../utils/currency.js';
 import { generateId } from '../utils/id.js';
 
 const router = Router();
 router.use(verifyAuth);
+router.use(verifyTenantActive);
 
 // GET /api/v1/organization
 router.get('/', async (req: Request, res: Response) => {

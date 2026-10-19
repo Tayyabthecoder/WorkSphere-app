@@ -6,12 +6,13 @@ import { ActivityLogModel } from '../models/ActivityLog.js';
 import { generateId } from '../utils/id.js';
 import { convertCurrency, CURRENCY_RATES } from '../utils/currency.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
-import { verifyAuth } from '../middleware/auth.js';
+import { verifyAuth, verifyTenantActive } from '../middleware/auth.js';
 import { assertPermission } from '../middleware/rbac.js';
 import { ValidationError, NotFoundError } from '../utils/errors.js';
 
 const router = Router();
 router.use(verifyAuth);
+router.use(verifyTenantActive);
 
 const CreateExpenseSchema = z.object({
   projectId: z.string().min(1, 'Project ID is required'),

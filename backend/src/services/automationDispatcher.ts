@@ -146,15 +146,14 @@ export async function dispatchAutomationEvent(options: DispatchEventOptions): Pr
                 type: 'system',
                 title: `Automation: ${rule.name}`,
                 message,
-                read: false,
-                data: {
-                  ruleId: rule.ruleId,
-                  taskId: entity.taskId,
-                  projectId: entity.projectId || projectId,
-                },
+                isRead: false,
+                relatedEntityType: 'task',
+                relatedEntityId: entity.taskId,
+                entityType: 'task',
+                entityId: entity.taskId,
               });
 
-              emitToUser(tenantId, targetUserId, 'notification:received', notification);
+              emitToUser(tenantId, targetUserId, 'notification:new', { notification });
             }
             break;
           }

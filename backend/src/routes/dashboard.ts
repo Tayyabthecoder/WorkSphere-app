@@ -5,10 +5,11 @@ import { SprintModel } from '../models/Sprint.js';
 import { TimeEntryModel } from '../models/TimeEntry.js';
 import { UserModel } from '../models/User.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
-import { verifyAuth } from '../middleware/auth.js';
+import { verifyAuth, verifyTenantActive } from '../middleware/auth.js';
 
 const router = Router();
 router.use(verifyAuth);
+router.use(verifyTenantActive);
 
 router.get('/summary', async (req: Request, res: Response) => {
   try {

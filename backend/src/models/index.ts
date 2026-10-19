@@ -18,3 +18,4 @@ export * from './Comment';
 export * from './AutomationRule';
 export * from './Invitation';
 export * from './Team';
+export * from './BlogPost';

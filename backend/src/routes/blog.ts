@@ -3,6 +3,7 @@ import { BlogPostModel, IBlogPost } from '../models/BlogPost.js';
 import { generateId } from '../utils/id.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
 import { verifyAuth } from '../middleware/auth.js';
+import { escapeRegex } from '../utils/regex.js';
 
 const router = Router();
 
@@ -320,7 +321,7 @@ router.get('/manage/all', ...requireSuperAdmin, async (req: Request, res: Respon
       query.status = status;
     }
     if (search) {
-      const re = { $regex: String(search), $options: 'i' };
+      const re = { $regex: escapeRegex(String(search)), $options: 'i' };
       query.$or = [{ title: re }, { excerpt: re }, { authorName: re }, { category: re }];
     }
 
@@ -700,7 +701,7 @@ router.get('/', async (req: Request, res: Response) => {
       query.tags = tag;
     }
     if (search) {
-      const re = { $regex: String(search), $options: 'i' };
+      const re = { $regex: escapeRegex(String(search)), $options: 'i' };
       query.$or = [{ title: re }, { excerpt: re }, { tags: re }, { authorName: re }];
     }
 

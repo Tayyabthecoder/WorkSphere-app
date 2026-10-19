@@ -2,15 +2,17 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { FolderModel } from '../models/Folder.js';
 import { DocumentModel } from '../models/Document.js';
+import { FileModel } from '../models/File.js';
 import { ActivityLogModel } from '../models/ActivityLog.js';
 import { generateId } from '../utils/id.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
-import { verifyAuth } from '../middleware/auth.js';
+import { verifyAuth, verifyTenantActive } from '../middleware/auth.js';
 import { assertPermission } from '../middleware/rbac.js';
 import { ValidationError, NotFoundError } from '../utils/errors.js';
 
 const router = Router();
 router.use(verifyAuth);
+router.use(verifyTenantActive);
 
 const CreateFolderSchema = z.object({
   name: z.string().min(1, 'Folder name is required').max(100),
@@ -112,11 +114,21 @@ router.delete('/:folderId', async (req: Request, res: Response) => {
       return sendApiError(res, new NotFoundError('Folder not found'), 404);
     }
 
-    // Move contained documents to root folder
-    await DocumentModel.updateMany(
-      { tenantId: user.tenantId, folderId: req.params.folderId },
-      { $set: { folderId: null } }
-    );
+    // Move contained documents, files, and child folders to root/parent
+    await Promise.all([
+      DocumentModel.updateMany(
+        { tenantId: user.tenantId, folderId: req.params.folderId },
+        { $set: { folderId: null } }
+      ),
+      FileModel.updateMany(
+        { tenantId: user.tenantId, folderId: req.params.folderId },
+        { $set: { folderId: null } }
+      ),
+      FolderModel.updateMany(
+        { tenantId: user.tenantId, parentFolderId: req.params.folderId },
+        { $set: { parentFolderId: null } }
+      ),
+    ]);
 
     return sendApiResponse(res, { message: 'Folder deleted successfully' });
   } catch (error: any) {

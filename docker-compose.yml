@@ -28,8 +28,8 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/worksphere
       REDIS_URL: redis://redis:6379
       PORT: 5001
-      JWT_SECRET: worksphere_super_secret_jwt_key_production_2026
-      JWT_REFRESH_SECRET: worksphere_super_secret_jwt_refresh_key_2026
+      JWT_SECRET: ${JWT_SECRET:-worksphere_dev_fallback_secret_change_in_production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-worksphere_dev_refresh_fallback_change_in_production}
       CORS_ORIGIN: http://localhost:5173
     depends_on:
       - mongodb

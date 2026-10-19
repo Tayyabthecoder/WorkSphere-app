@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { verifyAuth } from '../middleware/auth.js';
+import { verifyAuth, verifyTenantActive } from '../middleware/auth.js';
 import { assertPermission } from '../middleware/rbac.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
 import { generateId } from '../utils/id.js';
@@ -11,6 +11,7 @@ import { AvailabilityModel } from '../models/Availability.js';
 
 const router = Router();
 router.use(verifyAuth);
+router.use(verifyTenantActive);
 
 const AvailabilitySchema = z.object({
   userId: z.string().optional(),

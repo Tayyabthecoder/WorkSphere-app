@@ -23,6 +23,15 @@ const CreateSprintSchema = z.object({
   capacityPoints: z.number().min(0).optional().default(30),
 });
 
+const UpdateSprintSchema = z.object({
+  name: z.string().min(1, 'Sprint name is required').max(100).optional(),
+  goal: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  capacityPoints: z.number().min(0).optional(),
+  status: z.enum(['planning', 'active', 'completed']).optional(),
+});
+
 // GET /api/v1/sprints
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -173,7 +182,18 @@ router.put('/:sprintId', async (req: Request, res: Response) => {
       return sendApiError(res, new NotFoundError('Sprint not found'), 404);
     }
 
-    if (req.body.status === 'active' && sprint.status !== 'active') {
+    const parseResult = UpdateSprintSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return sendApiError(
+        res,
+        new ValidationError('Invalid sprint update data', parseResult.error.flatten().fieldErrors),
+        422
+      );
+    }
+
+    const validData = parseResult.data;
+
+    if (validData.status === 'active' && sprint.status !== 'active') {
       // Auto-complete any other currently active sprint on this project
       await SprintModel.updateMany(
         {
@@ -187,7 +207,13 @@ router.put('/:sprintId', async (req: Request, res: Response) => {
     }
 
     const oldStatus = sprint.status;
-    Object.assign(sprint, req.body);
+    if (validData.name !== undefined) sprint.name = validData.name.trim();
+    if (validData.goal !== undefined) sprint.goal = validData.goal;
+    if (validData.startDate !== undefined) sprint.startDate = new Date(validData.startDate);
+    if (validData.endDate !== undefined) sprint.endDate = new Date(validData.endDate);
+    if (validData.capacityPoints !== undefined) sprint.capacityPoints = validData.capacityPoints;
+    if (validData.status !== undefined) sprint.status = validData.status;
+
     await sprint.save();
 
     // Workflow Automation Engine triggers

@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { NotificationModel } from '../models/Notification.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
-import { verifyAuth } from '../middleware/auth.js';
+import { verifyAuth, verifyTenantActive } from '../middleware/auth.js';
 import { emitToUser } from '../socket/index.js';
 
 const router = Router();
 router.use(verifyAuth);
+router.use(verifyTenantActive);
 
 // GET /api/v1/notifications
 router.get('/', async (req: Request, res: Response) => {

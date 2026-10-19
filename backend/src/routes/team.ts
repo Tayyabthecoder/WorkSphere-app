@@ -10,15 +10,17 @@ import { InvitationModel } from '../models/Invitation.js';
 import { TenantModel } from '../models/Tenant.js';
 import { generateId } from '../utils/id.js';
 import { sendApiResponse, sendApiError } from '../utils/apiResponse.js';
-import { verifyAuth } from '../middleware/auth.js';
+import { verifyAuth, verifyTenantActive } from '../middleware/auth.js';
 import { assertPermission, assertCanManageRole, canManageRole, canCallerManageMember } from '../middleware/rbac.js';
 import { ValidationError, NotFoundError, ConflictError, ForbiddenError } from '../utils/errors.js';
 import { sendEmail } from '../utils/email.js';
 import { emitToTenant } from '../socket/index.js';
 import { ENV } from '../config/env.js';
+import { escapeRegex } from '../utils/regex.js';
 
 const router = Router();
 router.use(verifyAuth);
+router.use(verifyTenantActive);
 
 /**
  * GET /api/v1/team
@@ -46,7 +48,7 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     if (search && typeof search === 'string' && search.trim()) {
-      const q = search.trim();
+      const q = escapeRegex(search.trim());
       query.$or = [
         { name: { $regex: q, $options: 'i' } },
         { email: { $regex: q, $options: 'i' } },

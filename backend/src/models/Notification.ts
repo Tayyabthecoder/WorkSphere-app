@@ -4,11 +4,13 @@ export interface INotification extends Document {
   notificationId: string;
   tenantId: string;
   userId: string;
-  type: 'assignment' | 'mention' | 'deadline' | 'status_change' | 'budget_alert';
+  type: 'assignment' | 'mention' | 'deadline' | 'status_change' | 'budget_alert' | 'system';
   title: string;
   message: string;
   relatedEntityType?: 'task' | 'project' | 'comment' | 'budget';
   relatedEntityId?: string;
+  entityType?: string;
+  entityId?: string;
   isRead: boolean;
   createdAt: Date;
 }
@@ -20,7 +22,7 @@ const NotificationSchema = new Schema<INotification>(
     userId: { type: String, required: true, index: true },
     type: {
       type: String,
-      enum: ['assignment', 'mention', 'deadline', 'status_change', 'budget_alert'],
+      enum: ['assignment', 'mention', 'deadline', 'status_change', 'budget_alert', 'system'],
       required: true,
       index: true,
     },
@@ -28,6 +30,8 @@ const NotificationSchema = new Schema<INotification>(
     message: { type: String, required: true },
     relatedEntityType: { type: String },
     relatedEntityId: { type: String },
+    entityType: { type: String },
+    entityId: { type: String },
     isRead: { type: Boolean, default: false, index: true },
   },
   {

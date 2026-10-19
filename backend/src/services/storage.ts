@@ -34,10 +34,25 @@ const diskStorage = multer.diskStorage({
   },
 });
 
+const DANGEROUS_EXTENSIONS = new Set([
+  '.exe', '.bat', '.cmd', '.sh', '.bash', '.bin', '.js', '.mjs', '.vbs', '.msi',
+  '.com', '.scr', '.pif', '.application', '.gadget', '.hta', '.cpl', '.msc', '.jar',
+  '.php', '.asp', '.aspx', '.jsp', '.cgi', '.py', '.pl'
+]);
+
 export const fileUploadMiddleware = multer({
   storage: diskStorage,
   limits: {
     fileSize: 25 * 1024 * 1024, // 25 MB max file size
+  },
+  fileFilter: (_req: any, file: any, cb: any) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (DANGEROUS_EXTENSIONS.has(ext)) {
+      const err = new Error(`File type ${ext} is not allowed for security reasons.`);
+      (err as any).statusCode = 400;
+      return cb(err);
+    }
+    cb(null, true);
   },
 });
 

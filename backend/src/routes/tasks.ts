@@ -259,6 +259,8 @@ router.post('/', async (req: Request, res: Response) => {
               title: 'New Task Assignment',
               message: `${user.name || 'A teammate'} assigned you to "${task.title}"`,
               type: 'assignment',
+              relatedEntityType: 'task',
+              relatedEntityId: task.taskId,
               entityType: 'task',
               entityId: task.taskId,
               isRead: false,
