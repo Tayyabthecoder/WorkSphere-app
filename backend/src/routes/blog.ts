@@ -284,8 +284,10 @@ async function seedIfEmpty(): Promise<void> {
   }
 }
 
-// Ensure seed runs in background
-seedIfEmpty();
+// Ensure seed runs in background only for standalone servers (not serverless cold-starts)
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+  seedIfEmpty();
+}
 
 // ─── SuperAdmin Guard Helper ─────────────────────────────────────────────────
 

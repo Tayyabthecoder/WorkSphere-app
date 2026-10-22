@@ -17,8 +17,8 @@ function requireEnv(key: string, customMessage?: string): string {
 export const ENV = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: parseInt(process.env.PORT || '5001', 10),
-  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  CLIENT_URL: process.env.CLIENT_URL || process.env.CORS_ORIGIN || 'http://localhost:5173',
+  CORS_ORIGIN: process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173',
+  CLIENT_URL: process.env.FRONTEND_URL || process.env.CLIENT_URL || process.env.CORS_ORIGIN || 'http://localhost:5173',
   MONGODB_URI:
     process.env.MONGODB_URI ||
     process.env.MONGO_URI ||

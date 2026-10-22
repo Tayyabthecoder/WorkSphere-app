@@ -1,7 +1,17 @@
+import dns from 'dns';
 import mongoose from 'mongoose';
 import { ENV } from './env.js';
 
 const MONGODB_URI = ENV.MONGODB_URI;
+
+// Ensure MongoDB SRV records resolve reliably across all networks and ISPs
+if (MONGODB_URI.startsWith('mongodb+srv://')) {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch {
+    // Ignore if running in a restricted runtime
+  }
+}
 
 export async function connectDB(): Promise<typeof mongoose> {
   if (mongoose.connection.readyState === 1) {

@@ -64,7 +64,19 @@ app.use(helmet({
 }));
 app.use(
   cors({
-    origin: CORS_ORIGIN,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (
+        process.env.NODE_ENV !== 'production' ||
+        process.env.VERCEL ||
+        CORS_ORIGIN === '*' ||
+        origin === CORS_ORIGIN ||
+        origin.endsWith('.vercel.app')
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
     credentials: true,
   })
 );
@@ -72,14 +84,27 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Ensure MongoDB is connected in serverless environments (e.g. Vercel)
+app.use(async (_req: Request, _res: Response, next: NextFunction) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('[MERN Serverless DB Error]', err);
+    next(err);
+  }
+});
+
 // Health check endpoint
-app.get('/api/health', (_req: Request, res: Response) => {
+const healthHandler = (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'worksphere-mern-backend',
     timestamp: new Date().toISOString(),
   });
-});
+};
+app.get('/api/health', healthHandler);
+app.get('/health', healthHandler);
 
 // Rate limiter for authentication endpoints to prevent brute-force attacks
 const authRateLimiter = rateLimit({
@@ -136,6 +161,7 @@ apiRouter.use('/blog', blogRouter);
 // Canonical versioned mount (/api/v1/*) and legacy alias mount (/api/*)
 app.use('/api/v1', apiRouter);
 app.use('/api', apiRouter);
+app.use('/', apiRouter);
 
 // Interactive OpenAPI / Swagger Documentation
 app.use('/api/docs', ...(swaggerUi.serve as any), swaggerUi.setup(swaggerSpec) as any);
@@ -265,7 +291,10 @@ async function startServer() {
   }
 }
 
-startServer();
+// Only start standalone HTTP server when not in serverless environments (e.g. Vercel)
+if (!process.env.VERCEL) {
+  startServer();
+}
 
-export { app, server };
+export { server };
 export default app;
