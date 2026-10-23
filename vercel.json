@@ -3,15 +3,7 @@
   "services": {
     "backend": {
       "root": "backend",
-      "framework": "express",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "frontend",
-          "format": "url",
-          "env": "FRONTEND_URL"
-        }
-      ]
+      "framework": "express"
     },
     "frontend": {
       "root": "frontend",
