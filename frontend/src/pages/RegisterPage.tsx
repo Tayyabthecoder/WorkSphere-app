@@ -90,8 +90,10 @@ export const RegisterPage: React.FC = () => {
 
       navigate('/onboarding');
     } catch (err: any) {
-      const msg = err.response?.data?.error?.message || 'An error occurred during account registration. Please try again.';
-      setErrorMessage(msg);
+      const errorData = err.response?.data?.error;
+      const msg = errorData?.message || err.response?.data?.message || err.message || 'An error occurred during account registration. Please try again.';
+      const details = errorData?.details ? ` (${typeof errorData.details === 'string' ? errorData.details : JSON.stringify(errorData.details)})` : '';
+      setErrorMessage(`${msg}${details}`);
       setIsLoading(false);
     }
   };

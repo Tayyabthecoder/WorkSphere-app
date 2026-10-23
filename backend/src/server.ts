@@ -84,27 +84,43 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Ensure MongoDB is connected in serverless environments (e.g. Vercel)
-app.use(async (_req: Request, _res: Response, next: NextFunction) => {
-  try {
-    await connectDB();
-    next();
-  } catch (err) {
-    console.error('[MERN Serverless DB Error]', err);
-    next(err);
-  }
-});
-
-// Health check endpoint
+// Health check endpoints (Placed BEFORE DB middleware so health status is always accessible)
 const healthHandler = (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'worksphere-mern-backend',
     timestamp: new Date().toISOString(),
+    environment: {
+      nodeEnv: process.env.NODE_ENV || 'production',
+      hasJwtSecret: Boolean(process.env.JWT_SECRET),
+      hasMongoUri: Boolean(process.env.MONGODB_URI),
+    },
   });
 };
 app.get('/api/health', healthHandler);
 app.get('/health', healthHandler);
+
+// Ensure MongoDB is connected in serverless environments (e.g. Vercel)
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  if (req.path === '/health' || req.path === '/api/health' || req.path === '/favicon.ico') {
+    return next();
+  }
+  try {
+    await connectDB();
+    next();
+  } catch (err: any) {
+    console.error('[MERN Serverless DB Error]', err);
+    return sendApiError(
+      res,
+      {
+        code: 'DB_CONNECTION_ERROR',
+        message: 'Database connection failed. Please ensure MongoDB Atlas IP Access allows access (0.0.0.0/0) and credentials are valid.',
+        details: err?.message || String(err),
+      },
+      503
+    );
+  }
+});
 
 // Rate limiter for authentication endpoints to prevent brute-force attacks
 const authRateLimiter = rateLimit({
@@ -296,5 +312,4 @@ if (!process.env.VERCEL) {
   startServer();
 }
 
-export { server };
 export default app;

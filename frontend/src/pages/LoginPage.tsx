@@ -41,8 +41,10 @@ export const LoginPage: React.FC = () => {
         setErrorMessage(res.data?.error?.message || 'Invalid email or password.');
       }
     } catch (err: any) {
-      const msg = err.response?.data?.error?.message || 'Invalid email or password. Please try again.';
-      setErrorMessage(msg);
+      const errorData = err.response?.data?.error;
+      const msg = errorData?.message || err.response?.data?.message || err.message || 'Invalid email or password. Please try again.';
+      const details = errorData?.details ? ` (${typeof errorData.details === 'string' ? errorData.details : JSON.stringify(errorData.details)})` : '';
+      setErrorMessage(`${msg}${details}`);
     } finally {
       setIsLoading(false);
     }
