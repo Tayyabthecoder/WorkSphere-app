@@ -40,5 +40,21 @@ const options: swaggerJsdoc.Options = {
   apis: ['./src/routes/*.ts', './dist/routes/*.js'],
 };
 
-export const swaggerSpec = swaggerJsdoc(options);
+let spec: any = {
+  openapi: '3.0.0',
+  info: {
+    title: 'WorkSphere REST API',
+    version: '1.0.0',
+    description: 'Enterprise multi-tenant project management REST API.',
+  },
+  paths: {},
+};
+
+try {
+  spec = swaggerJsdoc(options);
+} catch (err) {
+  console.warn('[Swagger] JSDoc parsing deferred or unavailable in this environment:', err);
+}
+
+export const swaggerSpec = spec;
 export default swaggerSpec;

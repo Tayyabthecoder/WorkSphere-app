@@ -55,8 +55,10 @@ if (process.env.SENTRY_DSN) {
   console.log('📡 [Sentry] Error monitoring initialized');
 }
 
-// Initialize real-time WebSocket Gateway
-initSocketServer(server, CORS_ORIGIN);
+// Initialize real-time WebSocket Gateway (Only in non-serverless environments)
+if (!process.env.VERCEL) {
+  initSocketServer(server, CORS_ORIGIN);
+}
 
 // Security and parser middlewares
 app.use(helmet({
@@ -270,8 +272,8 @@ app.get('/', (_req: Request, res: Response) => {
   `);
 });
 
-// 404 handler for unmatched routes
-app.use('/api/*', (req: Request, res: Response) => {
+// 404 handler for unmatched API routes
+app.use(['/api/*', '/api'], (req: Request, res: Response) => {
   sendApiError(res, { code: 'NOT_FOUND', message: `Route ${req.originalUrl} not found` }, 404);
 });
 
@@ -310,6 +312,12 @@ async function startServer() {
 // Only start standalone HTTP server when not in serverless environments (e.g. Vercel)
 if (!process.env.VERCEL) {
   startServer();
+}
+
+// Assign to module.exports for CommonJS / Vercel serverless bridge compatibility
+if (typeof module !== 'undefined' && (module as any).exports) {
+  (module as any).exports = app;
+  (module as any).exports.default = app;
 }
 
 export default app;
