@@ -3,7 +3,9 @@
   "services": {
     "backend": {
       "root": "backend",
-      "framework": "express"
+      "framework": "express",
+      "entrypoint": "dist/server.js",
+      "buildCommand": "npm run build"
     },
     "frontend": {
       "root": "frontend",

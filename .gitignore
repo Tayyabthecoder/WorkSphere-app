@@ -5,6 +5,7 @@ node_modules/
 
 # Production build outputs
 dist/
+!backend/dist/
 build/
 out/
 *.tsbuildinfo

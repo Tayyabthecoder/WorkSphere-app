@@ -2,7 +2,6 @@
   "name": "worksphere-mern-backend",
   "version": "1.0.0",
   "description": "WorkSphere Express REST API Backend",
-  "type": "module",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -29,6 +28,7 @@
     "socket.io": "^4.8.4",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
+    "typescript": "^5.6.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {
