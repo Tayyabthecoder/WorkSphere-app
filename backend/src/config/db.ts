@@ -4,8 +4,9 @@ import { ENV } from './env.js';
 
 const MONGODB_URI = ENV.MONGODB_URI;
 
-// Ensure MongoDB SRV records resolve reliably across all networks and serverless environments
-if (MONGODB_URI && MONGODB_URI.startsWith('mongodb+srv://')) {
+// In local development, fall back to public DNS if local ISP blocks SRV records.
+// In cloud/serverless environments (Vercel), DO NOT override DNS as external UDP port 53 to 8.8.8.8 is blocked by cloud security groups.
+if (!process.env.VERCEL && MONGODB_URI && MONGODB_URI.startsWith('mongodb+srv://')) {
   try {
     dns.setServers(['8.8.8.8', '1.1.1.1']);
   } catch {
@@ -28,8 +29,8 @@ export async function connectDB(): Promise<typeof mongoose> {
     const opts: mongoose.ConnectOptions = {
       bufferCommands: false,
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 8000,
-      connectTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
     };
 
     cachedPromise = mongoose
