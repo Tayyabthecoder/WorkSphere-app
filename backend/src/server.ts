@@ -99,12 +99,11 @@ const healthHandler = (_req: Request, res: Response) => {
     },
   });
 };
-app.get('/api/health', healthHandler);
-app.get('/health', healthHandler);
+app.get(['/api', '/api/health', '/health'], healthHandler);
 
 // Ensure MongoDB is connected in serverless environments (e.g. Vercel)
 app.use(async (req: Request, res: Response, next: NextFunction) => {
-  if (req.path === '/health' || req.path === '/api/health' || req.path === '/favicon.ico') {
+  if (req.path === '/health' || req.path === '/api/health' || req.path === '/api' || req.path === '/favicon.ico') {
     return next();
   }
   try {
